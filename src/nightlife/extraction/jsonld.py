@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 
 from bs4 import BeautifulSoup
 
-from .base import ExtractedEvent
+from .base import ExtractedEvent, parse_iso
 
 
 def _iter_jsonld(html: str):
@@ -38,15 +37,6 @@ def _is_event(node) -> bool:
     return isinstance(t, str) and "Event" in t
 
 
-def _parse_iso(value):
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    except ValueError:
-        return None
-
-
 def _location_name(node):
     loc = node.get("location")
     if isinstance(loc, dict):
@@ -76,7 +66,7 @@ def parse_jsonld_events(html: str, *, source_url: str | None = None) -> list[Ext
             ExtractedEvent(
                 name=node.get("name"),
                 starts_at_raw=node.get("startDate"),
-                starts_at=_parse_iso(node.get("startDate")),
+                starts_at=parse_iso(node.get("startDate")),
                 ends_at_raw=node.get("endDate"),
                 venue_name=_location_name(node),
                 ticket_url=_offers_url(node),

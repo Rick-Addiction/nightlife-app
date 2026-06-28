@@ -21,3 +21,13 @@ class ExtractedEvent:
     source_url: str | None = None
     raw: dict = field(default_factory=dict)
     field_confidence: dict = field(default_factory=dict)
+
+
+def parse_iso(value: str | None) -> datetime | None:
+    """Parse an ISO-8601 datetime (Schema.org style), tolerating a trailing 'Z'."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None

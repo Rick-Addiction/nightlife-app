@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from bs4 import BeautifulSoup
 
-from .base import ExtractedEvent
+from .base import ExtractedEvent, parse_iso
 
 
 def _has_event_type(value) -> bool:
@@ -23,6 +23,7 @@ def parse_html_patterns(html: str, *, source_url: str | None = None) -> list[Ext
             ExtractedEvent(
                 name=name_el.get_text(strip=True) if name_el else None,
                 starts_at_raw=starts_raw,
+                starts_at=parse_iso(starts_raw),
                 source_url=source_url,
             )
         )

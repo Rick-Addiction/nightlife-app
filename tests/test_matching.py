@@ -36,3 +36,9 @@ def test_geo_proximity_boosts_score():
     existing = [VenueRef(1, "Cargo", lat=-23.561, lng=-46.656)]
     m = match_venue(VenueRef(None, "Cargo SP", lat=-23.5611, lng=-46.6561), existing)
     assert m is not None and m.venue.id == 1
+
+
+def test_stopword_only_names_are_not_similar():
+    # nomes que reduzem a vazio (so stopwords) nao podem ser tidos como identicos
+    assert name_similarity("Bar", "Clube") == 0.0
+    assert match_venue(VenueRef(None, "Clube"), [VenueRef(1, "Bar")]) is None

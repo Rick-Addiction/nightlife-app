@@ -39,3 +39,10 @@ def test_html_microdata_event():
     assert len(evs) == 1
     assert evs[0].name == "Carlos Capslock"
     assert evs[0].starts_at_raw == "2026-07-20T22:00:00-03:00"
+    assert evs[0].starts_at is not None and evs[0].starts_at.hour == 22
+
+
+def test_freetext_strips_trailing_punctuation_from_ticket_url():
+    text = "FESTA\n13/06\ningressos (https://sympla.com.br/e/x)."
+    ev = extract_freetext_deterministic(text, reference=REF)
+    assert ev.ticket_url == "https://sympla.com.br/e/x"

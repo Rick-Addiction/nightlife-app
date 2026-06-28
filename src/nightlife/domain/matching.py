@@ -33,7 +33,11 @@ def normalize_name(name: str) -> str:
 
 
 def name_similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, normalize_name(a), normalize_name(b)).ratio()
+    na, nb = normalize_name(a), normalize_name(b)
+    if not na and not nb:
+        # ambos reduziram a vazio (so stopwords) -> tratar como dissimilares
+        return 0.0
+    return SequenceMatcher(None, na, nb).ratio()
 
 
 def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:

@@ -6,6 +6,11 @@ from datetime import datetime
 
 from .matching import name_similarity, normalize_name
 
+# Cap aplicado quando nao ha proximidade de data. Precisa ficar ABAIXO do
+# limiar de "review" (0.65) em classify(), para recorrencias (mesma festa em
+# datas distantes) nunca virarem candidatas a merge/review.
+_RECURRENCE_CAP = 0.6
+
 
 @dataclass
 class EventKey:
@@ -37,18 +42,18 @@ def _date_proximity(a: datetime | None, b: datetime | None) -> float:
 
 def dedupe_score(a: EventKey, b: EventKey) -> float:
     name = name_similarity(a.name, b.name)
-    date = _date_proximity(a.starts_at, b.starts_at)
+    date_prox = _date_proximity(a.starts_at, b.starts_at)
     if a.venue_name and b.venue_name:
         venue = name_similarity(a.venue_name, b.venue_name)
     else:
         venue = 0.0
     same_ticket = bool(a.ticket_url and b.ticket_url and a.ticket_url == b.ticket_url)
 
-    score = 0.5 * name + 0.3 * date + 0.2 * venue
+    score = 0.5 * name + 0.3 * date_prox + 0.2 * venue
     # Sem proximidade de data (e sem ticket igual), no maximo "distinto":
     # evita tratar recorrencias (mesma festa em datas distantes) como duplicata.
-    if date == 0.0 and not same_ticket:
-        score = min(score, 0.6)
+    if date_prox == 0.0 and not same_ticket:
+        score = min(score, _RECURRENCE_CAP)
     if same_ticket:
         score = max(score, 0.95)
     if a.organizer and b.organizer and normalize_name(a.organizer) == normalize_name(b.organizer):

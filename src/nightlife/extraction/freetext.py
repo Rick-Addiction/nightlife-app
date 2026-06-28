@@ -26,6 +26,8 @@ def extract_freetext_deterministic(
 
     m = re.search(r"https?://\S+", text)
     if m:
-        ev.ticket_url = m.group(0)
+        # tira pontuacao de fim (ex.: "...mamba)." ) para nao corromper o
+        # ticket_url, que e usado como chave de deduplicacao por igualdade.
+        ev.ticket_url = m.group(0).rstrip(".,;:!?)]}>\"'")
 
     return ev
