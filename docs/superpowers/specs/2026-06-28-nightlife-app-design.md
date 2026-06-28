@@ -20,8 +20,8 @@ A tese central: o valor está na **camada de dados confiável**, não na UI. A i
 ### No escopo (v1 — "esqueleto")
 - Região única: São Paulo.
 - Single-user. Sem auth, sem multi-tenant.
-- **Catalogar = tudo** (balada, bar, casa de show, espaço de evento).
-- **Monitorar eventos = seletivo** (só venues que produzem evento — ver §4.1).
+- **Foco: cultura de festa** — baladas, festas, eventos e festivais (não bares em geral). Ver §4.1.
+- **Eixo duplo:** venues fixos (baladas, casas de festa) **e** festas/festivais itinerantes (ligados a organizer, sem venue fixo).
 - Pipeline de 4 camadas (§4), construído como *walking skeleton* com dados mock primeiro (§11).
 - Lista com filtro + mapa (tela mínima, depois).
 
@@ -52,22 +52,22 @@ O usuário desenhou a ordem correta: **venue-first**. Catalogar os locais primei
 
 | Camada | O que faz | Como | Alimenta |
 |---|---|---|---|
-| **1. Catálogo** | descobre os venues | Google Places + OSM/Overpass + listas (ex: Resident Advisor) → venue com lat/long, categoria, status | mapa |
+| **1. Catálogo** | descobre venues e produtoras | Google Places + OSM/Overpass + listas/agendas (ex: Resident Advisor) → venue (lat/long, categoria, status) + organizers | mapa |
 | **2. Canais** | acha IG / site / ticketing / Telegram de cada venue | Places fornece o website → o site linka o `@` → `venue_sources` | liga venue ↔ fontes de evento |
 | **3. Eventos** | extrai eventos dos venues monitorados | IG via Playwright (volume humano) + **canais de Telegram (API oficial)** + sites/ticketing via JSON-LD/HTML + share via Telegram → **vision extractor** é o cérebro comum | lista |
 | **4. Saída** | consumo | API (FastAPI) → lista com filtro + mapa; Telegram bot (share-in + notificações) | usuário |
 
-### 4.1 A regra "catalogar tudo / monitorar seletivo"
+### 4.1 Foco de escopo: cultura de festa
 
-"Tudo" em SP são ~10 mil+ lugares (a maioria bar). Catalogar é barato (Places/OSM) e ótimo pro mapa; **monitorar evento** de todos não escala nem faz sentido.
+O alvo é **baladas, festas, eventos e festivais** — não bares em geral. Isso encolhe o universo de ~10 mil+ lugares para algumas centenas de venues relevantes + as produtoras de festa, e mantém os dados densos em sinal.
 
-- **Catalogar:** todo lugar de nightlife entra no banco e no mapa.
-- **Monitorar:** flag `is_monitored` no venue. Um venue é promovido a monitorado quando dá sinal de que gera evento:
-  - categoria forte (night_club, live_music_venue);
-  - IG ativo postando flyer;
-  - página em plataforma de ticketing;
-  - marcação manual.
-- Isso operacionaliza o `+15 evento futuro linkado ao venue` do scoring (§7) como **critério de priorização**.
+**Categorias-alvo:**
+- **Venues:** baladas/nightclubs, casas de festa, espaços/galpões que recebem festa ou festival. (Bar comum só entra se tiver programação de festa/balada.)
+- **Eventos:** festas (em venue fixo ou itinerantes), eventos de nightlife, festivais.
+
+**Eixo duplo (venue + organizer).** Boa parte da cena de festa em SP é de **produtoras itinerantes** — a mesma festa roda em locais diferentes. Logo, um evento pode existir ligado a um `organizer` **sem** venue fixo. O modelo já suporta isso (`events.venue_id` e `events.organizer_id` são nullable; o scoring premia fonte oficial de organizador). Organizers são cidadãos de primeira classe, não só venues.
+
+**Monitoramento.** Como o universo já é focado, quase todo venue/produtora catalogado é relevante para monitorar. A flag `is_monitored` permanece — mas agora como **controle de atividade/qualidade** (desligar o que morreu ou parou de render), não como filtro para conter volume de bar.
 
 ---
 
