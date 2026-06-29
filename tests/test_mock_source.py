@@ -4,7 +4,7 @@ from pathlib import Path
 from nightlife.ingestion.base import RawVenue, RawEventPage
 from nightlife.ingestion.mock_source import MockSource
 
-FIXTURES = Path("src/nightlife/fixtures")
+FIXTURES = Path(__file__).parent.parent / "src" / "nightlife" / "fixtures"
 
 
 def test_loads_fixtures():

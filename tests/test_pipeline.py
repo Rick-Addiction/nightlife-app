@@ -52,3 +52,19 @@ def test_pipeline_event_without_resolvable_venue(session):
     assert len(events) == 1
     assert events[0].venue_id is None
     assert run.records_created == 1
+
+
+def test_pipeline_multi_event_page_counts_each_event(session):
+    # uma pagina jsonld com 2 eventos: found conta 1 pagina, created conta 2 eventos
+    two = (
+        '<script type="application/ld+json">'
+        '[{"@type":"Event","name":"Festa A","startDate":"2099-06-13T23:00:00-03:00"},'
+        '{"@type":"Event","name":"Festa B","startDate":"2099-06-20T23:00:00-03:00"}]'
+        "</script>"
+    )
+    src = MockSource([], [RawEventPage(kind="jsonld", content=two, source_type="ticketing")])
+    run = run_ingestion(session, src, reference=REF)
+    session.flush()
+    assert run.records_found == 1       # 1 pagina
+    assert run.records_created == 2     # 2 eventos
+    assert len(session.scalars(select(Event)).all()) == 2

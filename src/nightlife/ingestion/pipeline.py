@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..domain.matching import VenueRef, match_venue
+from ..extraction.base import ExtractedEvent
 from ..extraction.freetext import extract_freetext_deterministic
 from ..extraction.html_patterns import parse_html_patterns
 from ..extraction.jsonld import parse_jsonld_events
@@ -18,12 +19,14 @@ from .base import RawEventPage, Source
 from .signals import derive_event_signals, derive_venue_signals
 
 
-def _extract_page(page: RawEventPage, reference: date):
+def _extract_page(page: RawEventPage, reference: date) -> list[ExtractedEvent]:
     if page.kind == "jsonld":
         return parse_jsonld_events(page.content, source_url=page.source_url)
     if page.kind == "html":
         return parse_html_patterns(page.content, source_url=page.source_url)
-    return [extract_freetext_deterministic(page.content, reference=reference, source_url=page.source_url)]
+    if page.kind == "freetext":
+        return [extract_freetext_deterministic(page.content, reference=reference, source_url=page.source_url)]
+    raise ValueError(f"kind de pagina desconhecido: {page.kind!r}")
 
 
 def _resolve_venue(session: Session, venue_name: str | None) -> Venue | None:
@@ -59,9 +62,14 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
     for page in source.event_pages():
         found += 1
         try:
-            for ev in _extract_page(page, reference):
-                if not ev.name:
-                    continue
+            extracted = _extract_page(page, reference)
+        except Exception as exc:  # noqa: BLE001 — extracao da pagina falhou
+            errors.append(f"page {page.source_url!r} (extract): {exc}")
+            continue
+        for ev in extracted:
+            if not ev.name:
+                continue
+            try:
                 venue = _resolve_venue(session, ev.venue_name)
                 has_future = ev.starts_at is not None and ev.starts_at.date() >= reference
                 signals = derive_event_signals(
@@ -81,8 +89,8 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
                     signals,
                 )
                 created += 1
-        except Exception as exc:  # noqa: BLE001 — registra e segue
-            errors.append(f"page {page.source_url!r}: {exc}")
+            except Exception as exc:  # noqa: BLE001 — registra o evento e segue
+                errors.append(f"page {page.source_url!r} event {ev.name!r}: {exc}")
 
     run.status = "finished"
     run.records_found = found

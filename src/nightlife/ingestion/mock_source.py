@@ -15,7 +15,7 @@ class MockSource:
         self._pages = event_pages
 
     @classmethod
-    def from_fixtures(cls, venues_path, event_pages_path) -> "MockSource":
+    def from_fixtures(cls, venues_path: Path | str, event_pages_path: Path | str) -> MockSource:
         venues = [RawVenue(**d) for d in json.loads(Path(venues_path).read_text(encoding="utf-8"))]
         pages = [RawEventPage(**d) for d in json.loads(Path(event_pages_path).read_text(encoding="utf-8"))]
         return cls(venues, pages)
