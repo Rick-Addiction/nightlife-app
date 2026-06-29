@@ -69,6 +69,7 @@ class Event(Base):
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     venue: Mapped["Venue | None"] = relationship(back_populates="events")
+    organizer: Mapped["Organizer | None"] = relationship()
     sources: Mapped[list["EventSource"]] = relationship(
         back_populates="event", cascade="all, delete-orphan"
     )

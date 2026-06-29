@@ -44,3 +44,14 @@ def test_distinct_names_create_two_venues(session):
     upsert_venue(session, VenueInput(name="Trackers"), _src(), VenueSignals())
     session.flush()
     assert len(session.scalars(select(Venue)).all()) == 2
+
+
+def test_merge_keeps_highest_confidence(session):
+    # uma 2a fonte mais fraca nao pode REBAIXAR a confianca de um venue ja conhecido
+    upsert_venue(session, VenueInput(name="Lab Club"), _src(),
+                 VenueSignals(google_places_operational=True))  # 30
+    session.flush()
+    v = upsert_venue(session, VenueInput(name="lab club"), _src("osm"),
+                     VenueSignals(osm_match=True))  # 20 -> merge mantem 30
+    session.flush()
+    assert v.confidence == 30
