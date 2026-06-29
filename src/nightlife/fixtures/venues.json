@@ -1,0 +1,5 @@
+[
+  {"name": "Lab Club", "source_type": "google_places", "lat": -23.5613, "lng": -46.6565, "address": "R. Augusta, 1000", "category": "nightclub", "source_url": "https://maps.google.com/lab", "raw_payload": "{\"place_id\":\"lab1\"}"},
+  {"name": "Audio SP", "source_type": "osm", "lat": -23.5290, "lng": -46.6720, "address": "Av. Francisco Matarazzo, 694", "category": "live_music_venue", "source_url": "https://osm.org/audio", "raw_payload": "{\"osm_id\":42}"},
+  {"name": "Trackers", "source_type": "official_website", "lat": -23.5450, "lng": -46.6420, "address": "R. Augusta, 501", "category": "nightclub", "source_url": "https://trackers.com.br", "raw_payload": "{\"site\":true}"}
+]

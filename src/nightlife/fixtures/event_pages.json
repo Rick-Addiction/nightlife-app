@@ -1,0 +1,5 @@
+[
+  {"kind": "jsonld", "source_type": "ticketing", "source_url": "https://sympla.com.br/mamba", "content": "<html><head><script type=\"application/ld+json\">{\"@context\":\"https://schema.org\",\"@type\":\"Event\",\"name\":\"Mamba Negra\",\"startDate\":\"2099-06-13T23:00:00-03:00\",\"location\":{\"@type\":\"Place\",\"name\":\"Lab Club\"},\"offers\":{\"@type\":\"Offer\",\"url\":\"https://sympla.com.br/mamba\"}}</script></head><body></body></html>"},
+  {"kind": "html", "source_type": "event_page", "source_url": "https://audio.com/agenda", "content": "<div itemscope itemtype=\"https://schema.org/Event\"><span itemprop=\"name\">Carlos Capslock</span><meta itemprop=\"startDate\" content=\"2099-07-20T22:00:00-03:00\"></div>"},
+  {"kind": "freetext", "source_type": "instagram", "source_url": "https://instagram.com/p/abc", "content": "GOP TUN\nDOM 20/07 a partir das 16h\nopen air\ningressos: https://shotgun.live/goptun"}
+]
