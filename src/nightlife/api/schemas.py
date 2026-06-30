@@ -24,6 +24,7 @@ class EventOut(BaseModel):
     id: int
     name: str
     starts_at: datetime | None = None
+    ends_at: datetime | None = None
     venue_id: int | None = None
     status: str
     genre: str | None = None

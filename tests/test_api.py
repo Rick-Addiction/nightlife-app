@@ -71,3 +71,31 @@ def test_list_events_filters_and_get(session):
         assert client.get("/events/999999").status_code == 404
     finally:
         app.dependency_overrides.clear()
+
+
+def test_events_date_range_filter(session):
+    v = Venue(name="X", lat=-23.5, lng=-46.6, status="operational", confidence=50)
+    session.add(v)
+    session.flush()
+    e1 = Event(name="Junho", starts_at=datetime(2099, 6, 15, 22, 0, tzinfo=SP),
+               venue_id=v.id, status="scheduled", confidence=50)
+    e2 = Event(name="Agosto", starts_at=datetime(2099, 8, 15, 22, 0, tzinfo=SP),
+               venue_id=v.id, status="scheduled", confidence=50)
+    session.add_all([e1, e2])
+    session.flush()
+    client = _client(session)
+    try:
+        r = client.get("/events", params={"date_from": "2099-07-01", "date_to": "2099-12-31"})
+        names = [x["name"] for x in r.json()]
+        assert "Agosto" in names and "Junho" not in names
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_bbox_malformed_returns_400(session):
+    client = _client(session)
+    try:
+        r = client.get("/venues", params={"bbox": "nao,eh,bbox"})
+        assert r.status_code == 400
+    finally:
+        app.dependency_overrides.clear()

@@ -17,10 +17,20 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+_APP_TABLE_NAMES = {t.name for t in Base.metadata.sorted_tables}
+
+
+def _include_object(obj, name, type_, reflected, compare_to):
+    # so considera as tabelas do app; ignora as de sistema do PostGIS/tiger/topology
+    # que coexistem no schema public (senao todo autogenerate geraria drop_table delas)
+    if type_ == "table":
+        return name in _APP_TABLE_NAMES or name == "alembic_version"
+    return True
+
 
 def run_migrations_offline() -> None:
     context.configure(url=DATABASE_URL, target_metadata=target_metadata, literal_binds=True,
-                      dialect_opts={"paramstyle": "named"})
+                      dialect_opts={"paramstyle": "named"}, include_object=_include_object)
     with context.begin_transaction():
         context.run_migrations()
 
@@ -31,7 +41,8 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.", poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(connection=connection, target_metadata=target_metadata,
+                          include_object=_include_object)
         with context.begin_transaction():
             context.run_migrations()
 
