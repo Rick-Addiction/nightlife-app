@@ -3,6 +3,7 @@
 - **Data:** 2026-07-01
 - **Status:** Design aprovado — pendente revisão final do spec
 - **Contexto:** Primeira fonte real do nightlife-app (o walking skeleton A→D já está no `master`). Substitui/complementa a fonte mock com venues reais de São Paulo.
+- **Pré-requisito:** o refactor **score-da-evidência + idempotência** (`2026-07-01-evidence-scoring-design.md`) — a idempotência de evidência importa a partir da primeira re-execução real desta fonte, e a faixa de review de venue match importa a partir do primeiro ingest de catálogo em massa.
 
 ---
 
@@ -79,6 +80,11 @@ Elementos sem coordenada utilizável (sem lat/lng nem center) também são desca
 - **Smoke manual** (não CI): `python -m nightlife.ingest_osm` bate no Overpass real, popula o banco, e imprime `IngestionRun` + contagem de venues. Documentado no README.
 
 Suíte automatizada permanece determinística e offline.
+
+## 6.1 Re-execução e calibração
+
+- **Re-executar o ingest OSM é seguro e barato**: o venue matching reusa venues existentes e a evidência é idempotente (mesma `(source_type, source_url)` → atualiza `last_seen_at` em vez de inserir; vem do refactor pré-requisito).
+- **Calibração do matching no primeiro ingest real:** o runner imprime, além das contagens, quantos `dedupe_candidates` de venue (decision="review") o ingest gerou — é o material pra calibrar os thresholds com dados reais de SP (conferir a olho os pares em review).
 
 ## 7. Dependências & boas práticas
 

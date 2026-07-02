@@ -225,4 +225,13 @@ O sistema mede a si mesmo (nunca alega 100%):
 
 ## 16. Roadmap futuro (pós-esqueleto)
 
-Fontes reais (Places/OSM/ticketing/IG) · Graph API consentida · grafo de artistas (busca por DJ) · telas ricas (mapa + filtros) · notificações no Telegram · eventual caminho de produto (multi-usuário, monetização).
+Ordenado por **valor pessoal por esforço** (revisado em 2026-07-01 — o job-to-be-done é "que festa tá rolando essa semana?", que exige *eventos* + um jeito de *ver*, não catálogo completo):
+
+1. **Refactor score-da-evidência + idempotência** (spec próprio) — pré-requisito das fontes reais.
+2. **OSM/Overpass** (venues; spec próprio) — valida o caminho HTTP real e alimenta o mapa.
+3. **Ticketing #1: Sympla ou Shotgun** (eventos reais de SP via JSON-LD) — a lista ganha vida. Extrair também `organizer`/`performer` do JSON-LD (campos hoje ignorados pelo parser).
+4. **Digest mínimo no Telegram** (`python -m nightlife.digest`, "festas da semana") — fecha o loop de valor pessoal antes de qualquer tela.
+5. Resident Advisor → **vision extractor de flyers** (pHash + multimodal + OCR) → IG pessoal (Playwright baixo volume) → share-to-app.
+6. Telas ricas (lista + mapa MapLibre/Leaflet) · métricas de coverage/freshness expostas · grafo de artistas (busca por DJ).
+7. **Google Places: adiado** — custa dinheiro e enriquece venue (que não é a dor); entra quando qualidade de catálogo virar gargalo sentido.
+8. Eventual caminho de produto (Graph API consentida, multi-usuário, monetização).
