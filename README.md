@@ -32,10 +32,11 @@ docker compose up -d --wait                        # Postgres+PostGIS (porta 543
 .venv/Scripts/python -m uvicorn nightlife.api.main:app --reload --port 8001
 ```
 
-### Ingestão real: OpenStreetMap
+### Ingestão real
 
 ```bash
-.venv/Scripts/python -m nightlife.ingest_osm   # baladas + casas de evento de SP (Overpass)
+.venv/Scripts/python -m nightlife.ingest_osm      # baladas + casas de evento de SP (Overpass)
+.venv/Scripts/python -m nightlife.ingest_sympla   # eventos de festas/shows de SP (Sympla)
 ```
 
 Re-executar é seguro (matching reusa venues; evidência é idempotente). O runner
