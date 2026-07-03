@@ -40,5 +40,7 @@ def test_parse_overpass_maps_and_discards():
     assert audio.source_url == "https://www.openstreetmap.org/way/222"
 
 
-def test_osm_source_event_pages_is_empty():
-    assert OSMSource().event_pages() == []
+def test_osm_source_events_and_pages_are_empty():
+    src = OSMSource()
+    assert src.event_pages() == []
+    assert src.events() == []

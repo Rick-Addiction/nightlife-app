@@ -22,3 +22,11 @@ def test_in_memory_construction():
     src = MockSource([RawVenue(name="X", source_type="osm")], [])
     assert list(src.venues())[0].name == "X"
     assert list(src.event_pages()) == []
+
+
+def test_mock_source_events_default_empty_and_settable():
+    from nightlife.ingestion.base import RawEvent
+
+    assert MockSource([], []).events() == []
+    rev = RawEvent(name="Festa X", source_type="ticketing")
+    assert MockSource([], [], events=[rev]).events() == [rev]

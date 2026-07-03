@@ -4,15 +4,17 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .base import RawEventPage, RawVenue
+from .base import RawEvent, RawEventPage, RawVenue
 
 
 class MockSource:
     """Fonte de teste que serve registros a partir de listas em memoria ou de fixtures JSON."""
 
-    def __init__(self, venues: list[RawVenue], event_pages: list[RawEventPage]) -> None:
+    def __init__(self, venues: list[RawVenue], event_pages: list[RawEventPage],
+                 events: list["RawEvent"] | None = None) -> None:
         self._venues = venues
         self._pages = event_pages
+        self._events = events or []
 
     @classmethod
     def from_fixtures(cls, venues_path: Path | str, event_pages_path: Path | str) -> MockSource:
@@ -25,3 +27,6 @@ class MockSource:
 
     def event_pages(self) -> list[RawEventPage]:
         return list(self._pages)
+
+    def events(self) -> list["RawEvent"]:
+        return list(self._events)

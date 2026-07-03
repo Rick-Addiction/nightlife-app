@@ -5,7 +5,7 @@ import json
 
 import httpx
 
-from .base import RawEventPage, RawVenue
+from .base import RawEvent, RawEventPage, RawVenue
 
 OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
 # bbox da cidade de Sao Paulo: (south, west, north, east)
@@ -80,4 +80,7 @@ class OSMSource:
         return parse_overpass(resp.json())
 
     def event_pages(self) -> list[RawEventPage]:
+        return []
+
+    def events(self) -> list[RawEvent]:
         return []
