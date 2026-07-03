@@ -99,3 +99,44 @@ def test_bbox_malformed_returns_400(session):
         assert r.status_code == 400
     finally:
         app.dependency_overrides.clear()
+
+
+def test_effective_confidence_decays_with_staleness(session):
+    from datetime import timedelta, timezone as tz
+    old = datetime.now(tz.utc) - timedelta(days=180)
+    v = Venue(name="Velho Club", status="operational", confidence=80)
+    session.add(v)
+    session.flush()
+    v.last_seen_at = old  # nao reconfirmado ha 180 dias -> fator 0.5
+    session.flush()
+    client = _client(session)
+    try:
+        r = client.get(f"/venues/{v.id}")
+        body = r.json()
+        assert body["confidence"] == 80
+        assert body["effective_confidence"] == 40
+        # min_confidence filtra pelo effective
+        r2 = client.get("/venues", params={"min_confidence": 50})
+        assert all(x["id"] != v.id for x in r2.json())
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_events_default_hides_past(session):
+    v = Venue(name="X")
+    session.add(v)
+    session.flush()
+    past = Event(name="Ontem", starts_at=datetime(2000, 1, 1, 23, 0, tzinfo=SP),
+                 venue_id=v.id, status="scheduled", confidence=50)
+    future = Event(name="Amanha", starts_at=datetime(2099, 1, 1, 23, 0, tzinfo=SP),
+                   venue_id=v.id, status="scheduled", confidence=50)
+    session.add_all([past, future])
+    session.flush()
+    client = _client(session)
+    try:
+        names = [x["name"] for x in client.get("/events").json()]
+        assert "Amanha" in names and "Ontem" not in names  # default: so futuro
+        names2 = [x["name"] for x in client.get("/events", params={"include_past": "true"}).json()]
+        assert "Ontem" in names2
+    finally:
+        app.dependency_overrides.clear()

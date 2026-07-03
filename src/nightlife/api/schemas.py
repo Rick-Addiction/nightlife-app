@@ -16,6 +16,7 @@ class VenueOut(BaseModel):
     address: str | None = None
     status: str
     confidence: int
+    effective_confidence: int = 0
     is_monitored: bool
 
 
@@ -30,3 +31,4 @@ class EventOut(BaseModel):
     genre: str | None = None
     ticket_url: str | None = None
     confidence: int
+    effective_confidence: int = 0
