@@ -29,7 +29,9 @@ def test_pipeline_creates_venue_event_and_run(session):
     assert run.records_found == 2  # 1 venue + 1 pagina
 
     venues = session.scalars(select(Venue)).all()
-    assert len(venues) == 1 and venues[0].confidence == 30  # google_places
+    # google_places(30) + future_event_linked(15): o evento ingerido na mesma
+    # rodada recomputa o venue linkado
+    assert len(venues) == 1 and venues[0].confidence == 45
 
     events = session.scalars(select(Event)).all()
     assert len(events) == 1
@@ -52,6 +54,8 @@ def test_pipeline_event_without_resolvable_venue(session):
     assert len(events) == 1
     assert events[0].venue_id is None
     assert run.records_created == 1
+    # sem venue e sem ticketing: future(20) - no_venue(20) = 0
+    assert events[0].confidence == 0
 
 
 def test_pipeline_multi_event_page_counts_each_event(session):

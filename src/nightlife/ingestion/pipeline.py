@@ -16,7 +16,6 @@ from ..persistence.events_repo import upsert_event
 from ..persistence.inputs import EventInput, SourceInfo, VenueInput
 from ..persistence.venues_repo import upsert_venue
 from .base import RawEventPage, Source
-from .signals import derive_event_signals, derive_venue_signals
 
 
 def _extract_page(page: RawEventPage, reference: date) -> list[ExtractedEvent]:
@@ -53,7 +52,7 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
                 session,
                 VenueInput(name=rv.name, lat=rv.lat, lng=rv.lng, address=rv.address, category=rv.category),
                 SourceInfo(source_type=rv.source_type, source_url=rv.source_url, raw_payload=rv.raw_payload),
-                derive_venue_signals(rv.source_type),
+                reference=reference,
             )
             created += 1
         except Exception as exc:  # noqa: BLE001 — registra e segue
@@ -71,12 +70,6 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
                 continue
             try:
                 venue = _resolve_venue(session, ev.venue_name)
-                has_future = ev.starts_at is not None and ev.starts_at.date() >= reference
-                signals = derive_event_signals(
-                    source_type=page.source_type,
-                    has_future_date=has_future,
-                    venue_matched=venue is not None,
-                )
                 upsert_event(
                     session,
                     EventInput(
@@ -86,7 +79,7 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
                         raw_fields=ev.raw,
                     ),
                     SourceInfo(source_type=page.source_type, source_url=page.source_url, raw_payload=page.content),
-                    signals,
+                    reference=reference,
                 )
                 created += 1
             except Exception as exc:  # noqa: BLE001 — registra o evento e segue
