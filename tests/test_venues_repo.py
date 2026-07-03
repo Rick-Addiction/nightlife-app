@@ -1,57 +1,64 @@
 # tests/test_venues_repo.py
+from datetime import date
+
 from sqlalchemy import select
 
-from nightlife.models import Venue, VenueSource
-from nightlife.domain.scoring import VenueSignals
-from nightlife.persistence.inputs import VenueInput, SourceInfo
+from nightlife.models import DedupeCandidate, Venue, VenueSource
+from nightlife.persistence.inputs import SourceInfo, VenueInput
 from nightlife.persistence.venues_repo import upsert_venue
 
+REF = date(2026, 6, 1)
 
-def _src(stype="google_places"):
-    return SourceInfo(source_type=stype, source_url="http://x",
+
+def _src(stype="google_places", url="http://x"):
+    return SourceInfo(source_type=stype, source_url=url,
                       raw_payload='{"k":1}', extracted_fields={"k": 1})
 
 
-def test_creates_new_venue_with_score_and_source(session):
+def test_creates_new_venue_with_score_and_evidence(session):
     v = upsert_venue(
         session,
         VenueInput(name="Lab Club", lat=-23.561, lng=-46.656, address="R. X", category="nightclub"),
-        SourceInfo(source_type="google_places", source_url="http://g", raw_payload="p", extracted_fields={}),
-        VenueSignals(google_places_operational=True, official_website=True),
+        _src("google_places", "http://g"),
+        reference=REF,
     )
-    session.flush()
     assert v.id is not None
-    assert v.confidence == 30 + 20  # places + site
-    rows = session.scalars(select(Venue)).all()
-    assert len(rows) == 1
+    assert v.confidence == 30  # evidencia acumulada: so google_places
     srcs = session.scalars(select(VenueSource)).all()
-    assert len(srcs) == 1 and srcs[0].confidence_contribution == v.confidence
+    assert len(srcs) == 1 and srcs[0].confidence_contribution == 30
 
 
-def test_matching_reuses_existing_venue(session):
+def test_auto_merge_accumulates_confidence(session):
     upsert_venue(session, VenueInput(name="Lab Club", lat=-23.561, lng=-46.656),
-                 _src(), VenueSignals(google_places_operational=True))
-    session.flush()
-    v2 = upsert_venue(session, VenueInput(name="lab club", lat=-23.5611, lng=-46.6561),
-                      _src("osm"), VenueSignals(osm_match=True))
-    session.flush()
+                 _src("google_places", "http://g"), reference=REF)
+    v = upsert_venue(session, VenueInput(name="lab club", lat=-23.5611, lng=-46.6561),
+                     _src("osm", "https://osm.org/1"), reference=REF)
     assert len(session.scalars(select(Venue)).all()) == 1      # nao duplicou
     assert len(session.scalars(select(VenueSource)).all()) == 2  # duas evidencias
+    assert v.confidence == 50  # places(30) + osm(20) ACUMULADOS
+
+
+def test_rerun_same_source_is_idempotent(session):
+    upsert_venue(session, VenueInput(name="Lab Club"), _src("osm", "https://osm.org/1"), reference=REF)
+    v = upsert_venue(session, VenueInput(name="Lab Club"), _src("osm", "https://osm.org/1"), reference=REF)
+    assert len(session.scalars(select(Venue)).all()) == 1
+    assert len(session.scalars(select(VenueSource)).all()) == 1  # evidencia nao duplica
+    assert v.confidence == 20
 
 
 def test_distinct_names_create_two_venues(session):
-    upsert_venue(session, VenueInput(name="Lab Club"), _src(), VenueSignals())
-    upsert_venue(session, VenueInput(name="Trackers"), _src(), VenueSignals())
-    session.flush()
+    upsert_venue(session, VenueInput(name="Lab Club"), _src(), reference=REF)
+    upsert_venue(session, VenueInput(name="Trackers"), _src(url="http://y"), reference=REF)
     assert len(session.scalars(select(Venue)).all()) == 2
+    assert session.scalars(select(DedupeCandidate)).all() == []
 
 
-def test_merge_keeps_highest_confidence(session):
-    # uma 2a fonte mais fraca nao pode REBAIXAR a confianca de um venue ja conhecido
-    upsert_venue(session, VenueInput(name="Lab Club"), _src(),
-                 VenueSignals(google_places_operational=True))  # 30
-    session.flush()
-    v = upsert_venue(session, VenueInput(name="lab club"), _src("osm"),
-                     VenueSignals(osm_match=True))  # 20 -> merge mantem 30
-    session.flush()
-    assert v.confidence == 30
+def test_mid_similarity_creates_new_plus_review_candidate(session):
+    # "Audio SP" x "Audio Club" -> similaridade ~0.77 (faixa 0.70-0.85):
+    # cria venue novo E registra candidato de revisao, sem merge automatico
+    upsert_venue(session, VenueInput(name="Audio Club"), _src(url="http://a"), reference=REF)
+    upsert_venue(session, VenueInput(name="Audio SP"), _src(url="http://b"), reference=REF)
+    assert len(session.scalars(select(Venue)).all()) == 2
+    cands = session.scalars(select(DedupeCandidate)).all()
+    assert len(cands) == 1
+    assert cands[0].kind == "venue" and cands[0].decision == "review"
