@@ -10,7 +10,7 @@ from .base import RawEventPage, RawVenue
 OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
 # bbox da cidade de Sao Paulo: (south, west, north, east)
 SP_BBOX = (-24.00, -46.83, -23.36, -46.36)
-_USER_AGENT = "nightlife-app/0.1 (uso pessoal; https://github.com/ não-publicado)"
+_USER_AGENT = "nightlife-app/0.1 (uso pessoal; https://github.com/ nao-publicado)"
 
 
 def _build_query(bbox: tuple[float, float, float, float]) -> str:
