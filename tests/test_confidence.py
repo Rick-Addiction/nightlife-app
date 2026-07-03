@@ -61,3 +61,26 @@ def test_event_multisource_bonus_and_recompute_down(session):
     e.status = "cancelled"
     # recompute pode DESCER: 85 - 50 (cancelado) = 35
     assert recompute_event_confidence(session, e, reference=REF) == 35
+
+
+def test_future_past_uses_sao_paulo_day(session):
+    from datetime import timezone
+
+    from nightlife.persistence.confidence import event_signals_from_evidence
+
+    v = Venue(name="X")
+    session.add(v)
+    session.flush()
+    # sabado 06/06/2026 23:00 em SP == domingo 07/06 02:00 UTC
+    e = Event(name="Madrugada", venue_id=v.id,
+              starts_at=datetime(2026, 6, 7, 2, 0, tzinfo=timezone.utc))
+    session.add(e)
+    session.flush()
+    record_event_evidence(session, e.id, _src("ticketing", "https://t/x"), contribution=25)
+
+    # referencia = domingo 07/06: no dia SP o evento foi SABADO -> passado
+    sig = event_signals_from_evidence(session, e, reference=date(2026, 6, 7))
+    assert sig.past_date is True and sig.future_date is False
+    # referencia = sabado 06/06: mesmo dia SP -> futuro
+    sig2 = event_signals_from_evidence(session, e, reference=date(2026, 6, 6))
+    assert sig2.future_date is True and sig2.past_date is False

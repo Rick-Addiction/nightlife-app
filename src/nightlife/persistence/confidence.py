@@ -2,12 +2,17 @@
 from __future__ import annotations
 
 from datetime import date
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..domain.scoring import EventSignals, VenueSignals, score_event, score_venue
 from ..models import Event, EventSource, Venue, VenueSource, VerificationLog
+
+# "Dia" do sistema = dia em America/Sao_Paulo (spec sympla §6). A API da
+# Sympla entrega UTC; sem converter, festa de sabado 23h viraria "domingo".
+_SP_TZ = ZoneInfo("America/Sao_Paulo")
 
 # Quanto cada fonte vale SOZINHA (gravado em confidence_contribution — agora o
 # nome e honesto). O score da entidade vem de score_venue/score_event sobre os
@@ -45,7 +50,7 @@ def event_signals_from_evidence(session: Session, event: Event, *, reference: da
     ))
     starts = event.starts_at
     return EventSignals(
-        future_date=starts is not None and starts.date() >= reference,
+        future_date=starts is not None and starts.astimezone(_SP_TZ).date() >= reference,
         venue_matched=event.venue_id is not None,
         official_source=bool(types & {"official_website", "organizer"}),
         ticketing_source="ticketing" in types,
@@ -53,7 +58,7 @@ def event_signals_from_evidence(session: Session, event: Event, *, reference: da
         # mesmo IG nao contam como 2 fontes
         independent_source_count=len(types) or 1,
         no_venue=event.venue_id is None,
-        past_date=starts is not None and starts.date() < reference,
+        past_date=starts is not None and starts.astimezone(_SP_TZ).date() < reference,
         cancelled=event.status == "cancelled",
     )
 
