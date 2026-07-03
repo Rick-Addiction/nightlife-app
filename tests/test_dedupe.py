@@ -35,6 +35,21 @@ def test_recurring_party_same_name_far_dates_is_distinct():
     assert classify(dedupe_score(a, b)) == "distinct"
 
 
+def test_recurring_party_with_same_organizer_still_distinct():
+    # o bonus de organizer nao pode furar o cap de recorrencia
+    a = _ev("Gop Tun", datetime(2026, 6, 7, 16, 0, tzinfo=SP), venue="Cargo", organizer="Gop Tun Org")
+    b = _ev("Gop Tun", datetime(2026, 6, 14, 16, 0, tzinfo=SP), venue="Cargo", organizer="Gop Tun Org")
+    assert classify(dedupe_score(a, b)) == "distinct"
+
+
+def test_same_generic_ticket_with_far_dates_not_merged():
+    # link compartilhado + datas conhecidas e distantes = provavel link generico
+    # do venue, nao prova de mesmo-evento
+    a = _ev("Festa A", datetime(2026, 6, 13, 23, 0, tzinfo=SP), ticket="https://linktr.ee/clubx")
+    b = _ev("Festa B", datetime(2026, 7, 20, 23, 0, tzinfo=SP), ticket="https://linktr.ee/clubx")
+    assert classify(dedupe_score(a, b)) != "auto_merge"
+
+
 def test_compare_returns_result_object():
     a = _ev("Festa", datetime(2026, 6, 13, 23, 0, tzinfo=SP), venue="Lab")
     b = _ev("Festa", datetime(2026, 6, 13, 23, 0, tzinfo=SP), venue="Lab")

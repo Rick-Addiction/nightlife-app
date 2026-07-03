@@ -29,7 +29,9 @@ def normalize_name(name: str) -> str:
     s = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode().lower()
     s = re.sub(r"[^a-z0-9]+", " ", s).strip()
     tokens = [tok for tok in s.split() if tok not in _STOPWORDS]
-    return " ".join(tokens)
+    # nome composto so de stopwords ("A Casa", "O Bar"): usa a forma sem filtro,
+    # senao o venue nunca casaria consigo mesmo e duplicaria a cada ingest
+    return " ".join(tokens) if tokens else s
 
 
 def name_similarity(a: str, b: str) -> float:

@@ -43,6 +43,14 @@ def upsert_event(
     if best is not None and best.decision == "auto_merge":
         event = best_row
         event.last_seen_at = datetime.now(timezone.utc)
+        # preenche lacunas sem sobrescrever dados ja existentes (como upsert_venue):
+        # ex. flyer sem data parseavel + pagina de ticketing com startDate real
+        event.starts_at = event.starts_at if event.starts_at is not None else candidate.starts_at
+        event.ends_at = event.ends_at if event.ends_at is not None else candidate.ends_at
+        event.venue_id = event.venue_id if event.venue_id is not None else candidate.venue_id
+        event.ticket_url = event.ticket_url or candidate.ticket_url
+        event.genre = event.genre or candidate.genre
+        event.lineup_text = event.lineup_text or candidate.lineup_text
         # uma nova fonte so pode REFORCAR a confianca, nunca rebaixar
         event.confidence = max(event.confidence, score_event(signals))
     else:

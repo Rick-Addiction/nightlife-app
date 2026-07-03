@@ -46,3 +46,18 @@ def test_freetext_strips_trailing_punctuation_from_ticket_url():
     text = "FESTA\n13/06\ningressos (https://sympla.com.br/e/x)."
     ev = extract_freetext_deterministic(text, reference=REF)
     assert ev.ticket_url == "https://sympla.com.br/e/x"
+
+
+def test_freetext_preserves_balanced_parens_in_url():
+    # ")" que fecha um "(" DENTRO da URL nao e pontuacao de prosa
+    text = "FESTA\n13/06\nhttps://site.com.br/evento_(edicao-2)"
+    ev = extract_freetext_deterministic(text, reference=REF)
+    assert ev.ticket_url == "https://site.com.br/evento_(edicao-2)"
+
+
+def test_freetext_ignores_generic_venue_links():
+    # linktree/wa.me sao link de bio do venue, nao ticket — guardar isso em
+    # ticket_url faria o dedupe fundir eventos distintos do mesmo club
+    text = "FESTA A\n13/06 23h\nreservas: https://linktr.ee/clubx"
+    ev = extract_freetext_deterministic(text, reference=REF)
+    assert ev.ticket_url is None

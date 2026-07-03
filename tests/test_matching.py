@@ -39,6 +39,14 @@ def test_geo_proximity_boosts_score():
 
 
 def test_stopword_only_names_are_not_similar():
-    # nomes que reduzem a vazio (so stopwords) nao podem ser tidos como identicos
-    assert name_similarity("Bar", "Clube") == 0.0
+    # nomes so-de-stopword DIFERENTES nao podem ser tidos como identicos
+    assert name_similarity("Bar", "Clube") < 0.5
     assert match_venue(VenueRef(None, "Clube"), [VenueRef(1, "Bar")]) is None
+
+
+def test_stopword_only_name_matches_itself():
+    # ...mas um venue chamado "A Casa" precisa casar consigo mesmo, senao
+    # cada ingest cria uma duplicata nova
+    assert name_similarity("A Casa", "A Casa") == 1.0
+    m = match_venue(VenueRef(None, "A Casa"), [VenueRef(1, "A Casa")])
+    assert m is not None and m.venue.id == 1

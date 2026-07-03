@@ -50,14 +50,23 @@ def dedupe_score(a: EventKey, b: EventKey) -> float:
     same_ticket = bool(a.ticket_url and b.ticket_url and a.ticket_url == b.ticket_url)
 
     score = 0.5 * name + 0.3 * date_prox + 0.2 * venue
-    # Sem proximidade de data (e sem ticket igual), no maximo "distinto":
-    # evita tratar recorrencias (mesma festa em datas distantes) como duplicata.
-    if date_prox == 0.0 and not same_ticket:
-        score = min(score, _RECURRENCE_CAP)
-    if same_ticket:
-        score = max(score, 0.95)
     if a.organizer and b.organizer and normalize_name(a.organizer) == normalize_name(b.organizer):
         score = min(1.0, score + 0.1)
+
+    # Ticket igual so prova mesmo-evento quando as datas nao se contradizem:
+    # eventos distintos costumam compartilhar link generico do venue (linktree,
+    # site). Datas conhecidas e distantes + mesmo link => provavel link generico.
+    ticket_proves_same = same_ticket and (
+        date_prox > 0.0 or a.starts_at is None or b.starts_at is None
+    )
+    if ticket_proves_same:
+        score = max(score, 0.95)
+
+    # Cap de recorrencia por ULTIMO: sem proximidade de data (e sem prova por
+    # ticket), o teto e "distinto" — recorrencias (mesma festa, mesmo organizer,
+    # datas distantes) nunca viram candidatas a merge/review.
+    if date_prox == 0.0 and not ticket_proves_same:
+        score = min(score, _RECURRENCE_CAP)
     return score
 
 
