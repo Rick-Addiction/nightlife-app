@@ -51,13 +51,14 @@ def upsert_event(
         event.starts_at = event.starts_at if event.starts_at is not None else candidate.starts_at
         event.ends_at = event.ends_at if event.ends_at is not None else candidate.ends_at
         event.venue_id = event.venue_id if event.venue_id is not None else candidate.venue_id
+        event.organizer_id = event.organizer_id if event.organizer_id is not None else candidate.organizer_id
         event.ticket_url = event.ticket_url or candidate.ticket_url
         event.genre = event.genre or candidate.genre
         event.lineup_text = event.lineup_text or candidate.lineup_text
     else:
         event = Event(
             name=candidate.name, starts_at=candidate.starts_at, ends_at=candidate.ends_at,
-            venue_id=candidate.venue_id, lineup_text=candidate.lineup_text,
+            venue_id=candidate.venue_id, organizer_id=candidate.organizer_id, lineup_text=candidate.lineup_text,
             genre=candidate.genre, ticket_url=candidate.ticket_url,
             raw_fields=candidate.raw_fields, status="scheduled",
         )

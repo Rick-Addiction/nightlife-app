@@ -30,6 +30,7 @@ class EventInput:
     venue_id: int | None = None
     venue_name: str | None = None
     organizer: str | None = None
+    organizer_id: int | None = None
     lineup_text: str | None = None
     genre: str | None = None
     ticket_url: str | None = None
