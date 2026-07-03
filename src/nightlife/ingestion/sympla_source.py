@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date
 from zoneinfo import ZoneInfo
 
 import httpx
+
+_log = logging.getLogger(__name__)
 
 from ..extraction.base import parse_iso
 from .base import RawEvent, RawEventPage, RawVenue
@@ -41,10 +44,12 @@ def parse_search_records(data: dict, *, reference: date) -> list[RawEvent]:
         name = rec.get("name")
         if not name or not _wanted(rec):
             continue
-        starts = parse_iso(rec.get("start_date_utc") or rec.get("start_date"))
+        # so os campos *_utc: o "start_date" sem sufixo tem timezone ambigua
+        # (pode ser local); melhor evento sem data do que com data errada
+        starts = parse_iso(rec.get("start_date_utc"))
         if starts is not None and starts.astimezone(_SP_TZ).date() < reference:
             continue  # so futuros (dia SP)
-        ends = parse_iso(rec.get("end_date_utc") or rec.get("end_date"))
+        ends = parse_iso(rec.get("end_date_utc"))
         loc = rec.get("location") or {}
         venue = None
         if loc.get("name"):
@@ -109,4 +114,12 @@ class SymplaSource:
             out.extend(parse_search_records(data, reference=reference))
             if len(batch) < self._page_size:
                 break
+        else:
+            # o filtro server-side e best-effort: dependemos de varrer as paginas
+            # e filtrar client-side. Se o cap bateu com a API ainda cheia, pode
+            # haver eventos de SP alem do horizonte — avisa em vez de truncar mudo.
+            _log.warning(
+                "SymplaSource: cap de %d paginas atingido com a API ainda retornando "
+                "paginas cheias — resultados possivelmente truncados", self._max_pages,
+            )
         return out

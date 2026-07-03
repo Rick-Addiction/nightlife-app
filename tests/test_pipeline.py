@@ -75,6 +75,25 @@ def test_pipeline_source_fetch_failure_marks_run_error(session):
     assert run.finished_at is not None
 
 
+class _BoomEventsSource:
+    def venues(self):
+        return []
+
+    def event_pages(self):
+        return []
+
+    def events(self):
+        raise RuntimeError("sympla caiu")
+
+
+def test_pipeline_events_fetch_failure_marks_run_error(session):
+    # falha especificamente no fetch de events() tambem marca o run com erro
+    run = run_ingestion(session, _BoomEventsSource(), reference=REF, label="sympla")
+    session.flush()
+    assert run.status == "error"
+    assert "sympla caiu" in run.errors
+
+
 def test_pipeline_multi_event_page_counts_each_event(session):
     # uma pagina jsonld com 2 eventos: found conta 1 pagina, created conta 2 eventos
     two = (

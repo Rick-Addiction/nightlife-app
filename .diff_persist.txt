@@ -1,0 +1,100 @@
+diff --git a/src/nightlife/persistence/confidence.py b/src/nightlife/persistence/confidence.py
+index c12c62d..5693a1a 100644
+--- a/src/nightlife/persistence/confidence.py
++++ b/src/nightlife/persistence/confidence.py
+@@ -2,6 +2,7 @@
+ from __future__ import annotations
+ 
+ from datetime import date
++from zoneinfo import ZoneInfo
+ 
+ from sqlalchemy import select
+ from sqlalchemy.orm import Session
+@@ -9,6 +10,10 @@ from sqlalchemy.orm import Session
+ from ..domain.scoring import EventSignals, VenueSignals, score_event, score_venue
+ from ..models import Event, EventSource, Venue, VenueSource, VerificationLog
+ 
++# "Dia" do sistema = dia em America/Sao_Paulo (spec sympla §6). A API da
++# Sympla entrega UTC; sem converter, festa de sabado 23h viraria "domingo".
++_SP_TZ = ZoneInfo("America/Sao_Paulo")
++
+ # Quanto cada fonte vale SOZINHA (gravado em confidence_contribution — agora o
+ # nome e honesto). O score da entidade vem de score_venue/score_event sobre os
+ # sinais derivados da evidencia acumulada, nao da soma destes valores.
+@@ -45,7 +50,7 @@ def event_signals_from_evidence(session: Session, event: Event, *, reference: da
+     ))
+     starts = event.starts_at
+     return EventSignals(
+-        future_date=starts is not None and starts.date() >= reference,
++        future_date=starts is not None and starts.astimezone(_SP_TZ).date() >= reference,
+         venue_matched=event.venue_id is not None,
+         official_source=bool(types & {"official_website", "organizer"}),
+         ticketing_source="ticketing" in types,
+@@ -53,7 +58,7 @@ def event_signals_from_evidence(session: Session, event: Event, *, reference: da
+         # mesmo IG nao contam como 2 fontes
+         independent_source_count=len(types) or 1,
+         no_venue=event.venue_id is None,
+-        past_date=starts is not None and starts.date() < reference,
++        past_date=starts is not None and starts.astimezone(_SP_TZ).date() < reference,
+         cancelled=event.status == "cancelled",
+     )
+ 
+diff --git a/src/nightlife/persistence/events_repo.py b/src/nightlife/persistence/events_repo.py
+index 4ae343f..278f2d4 100644
+--- a/src/nightlife/persistence/events_repo.py
++++ b/src/nightlife/persistence/events_repo.py
+@@ -51,13 +51,14 @@ def upsert_event(
+         event.starts_at = event.starts_at if event.starts_at is not None else candidate.starts_at
+         event.ends_at = event.ends_at if event.ends_at is not None else candidate.ends_at
+         event.venue_id = event.venue_id if event.venue_id is not None else candidate.venue_id
++        event.organizer_id = event.organizer_id if event.organizer_id is not None else candidate.organizer_id
+         event.ticket_url = event.ticket_url or candidate.ticket_url
+         event.genre = event.genre or candidate.genre
+         event.lineup_text = event.lineup_text or candidate.lineup_text
+     else:
+         event = Event(
+             name=candidate.name, starts_at=candidate.starts_at, ends_at=candidate.ends_at,
+-            venue_id=candidate.venue_id, lineup_text=candidate.lineup_text,
++            venue_id=candidate.venue_id, organizer_id=candidate.organizer_id, lineup_text=candidate.lineup_text,
+             genre=candidate.genre, ticket_url=candidate.ticket_url,
+             raw_fields=candidate.raw_fields, status="scheduled",
+         )
+diff --git a/src/nightlife/persistence/inputs.py b/src/nightlife/persistence/inputs.py
+index bf83caf..3f020ff 100644
+--- a/src/nightlife/persistence/inputs.py
++++ b/src/nightlife/persistence/inputs.py
+@@ -30,6 +30,7 @@ class EventInput:
+     venue_id: int | None = None
+     venue_name: str | None = None
+     organizer: str | None = None
++    organizer_id: int | None = None
+     lineup_text: str | None = None
+     genre: str | None = None
+     ticket_url: str | None = None
+diff --git a/src/nightlife/persistence/organizers.py b/src/nightlife/persistence/organizers.py
+new file mode 100644
+index 0000000..9ca2f2b
+--- /dev/null
++++ b/src/nightlife/persistence/organizers.py
+@@ -0,0 +1,21 @@
++# src/nightlife/persistence/organizers.py
++from __future__ import annotations
++
++from sqlalchemy import select
++from sqlalchemy.orm import Session
++
++from ..domain.matching import normalize_name
++from ..models import Organizer
++
++
++def get_or_create_organizer(session: Session, name: str) -> Organizer:
++    """Organizer e cidadao de primeira classe: reusa por nome normalizado
++    (mesmo padrao O(n) do esqueleto), cria se nao existe."""
++    wanted = normalize_name(name)
++    for org in session.scalars(select(Organizer)).all():
++        if normalize_name(org.name) == wanted:
++            return org
++    org = Organizer(name=name)
++    session.add(org)
++    session.flush()
++    return org
