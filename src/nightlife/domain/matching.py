@@ -7,7 +7,13 @@ import unicodedata
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 
-_STOPWORDS = {"bar", "club", "clube", "casa", "the", "o", "a", "de", "do", "da"}
+# Calibrado com dados reais (2026-07-03): 26/26 pares em review eram falsos
+# positivos inflados por palavras genericas de venue ("Espaco X" vs "Espaco Y").
+# Tokens pos-normalizacao (sem acento).
+_STOPWORDS = {
+    "bar", "club", "clube", "casa", "the", "o", "a", "de", "do", "da",
+    "espaco", "buffet", "eventos", "evento", "salao", "teatro",
+}
 
 
 @dataclass
@@ -67,12 +73,28 @@ def match_venue(candidate: VenueRef, existing: list[VenueRef], *, threshold: flo
 
 VENUE_MERGE_THRESHOLD = 0.85
 VENUE_REVIEW_THRESHOLD = 0.70
+# Duplicata FISICA de venue nao pode estar longe de si mesma. Calibrado com
+# dados reais: todos os 26 falsos positivos estavam a >0.8km; os 5 auto-merges
+# corretos, a <150m (boost geo). 1km cobre variancia de geocoding com folga.
+MAX_DUPLICATE_DISTANCE_KM = 1.0
 
 
-def classify_venue_match(score: float) -> str:
+def geo_distance_km(a: VenueRef, b: VenueRef) -> float | None:
+    """Distancia entre dois venues, ou None se algum nao tem coordenada."""
+    if None in (a.lat, a.lng, b.lat, b.lng):
+        return None
+    return _haversine_km(a.lat, a.lng, b.lat, b.lng)
+
+
+def classify_venue_match(score: float, *, distance_km: float | None = None) -> str:
     """Faixas de decisao para upsert de venue: merge automatico so em alta
     confianca; a faixa intermediaria cria venue novo + candidato de revisao
-    (um merge errado de venue envenena a ancora de todos os eventos)."""
+    (um merge errado de venue envenena a ancora de todos os eventos).
+
+    Nomes parecidos a mais de MAX_DUPLICATE_DISTANCE_KM sao lugares fisicos
+    diferentes (filial, xara) — nunca merge nem review."""
+    if distance_km is not None and distance_km > MAX_DUPLICATE_DISTANCE_KM:
+        return "distinct"
     if score >= VENUE_MERGE_THRESHOLD:
         return "auto_merge"
     if score >= VENUE_REVIEW_THRESHOLD:

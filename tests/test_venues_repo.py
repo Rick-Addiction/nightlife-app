@@ -53,6 +53,16 @@ def test_distinct_names_create_two_venues(session):
     assert session.scalars(select(DedupeCandidate)).all() == []
 
 
+def test_same_name_far_apart_is_distinct_not_merged(session):
+    # mesmo nome a ~7km: filial/xara, nao duplicata — nem merge, nem review
+    upsert_venue(session, VenueInput(name="Villa Country", lat=-23.50, lng=-46.60),
+                 _src(url="http://a"), reference=REF)
+    upsert_venue(session, VenueInput(name="Villa Country", lat=-23.55, lng=-46.65),
+                 _src(url="http://b"), reference=REF)
+    assert len(session.scalars(select(Venue)).all()) == 2
+    assert session.scalars(select(DedupeCandidate)).all() == []
+
+
 def test_mid_similarity_creates_new_plus_review_candidate(session):
     # "Audio SP" x "Audio Club" -> similaridade ~0.77 (faixa 0.70-0.85):
     # cria venue novo E registra candidato de revisao, sem merge automatico

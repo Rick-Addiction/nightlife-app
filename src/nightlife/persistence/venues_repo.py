@@ -6,7 +6,7 @@ from datetime import date, datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..domain.matching import VenueRef, classify_venue_match, match_venue
+from ..domain.matching import VenueRef, classify_venue_match, geo_distance_km, match_venue
 from ..models import DedupeCandidate, Venue
 from .confidence import VENUE_SOURCE_CONTRIBUTION, recompute_venue_confidence
 from .evidence import record_venue_evidence
@@ -18,12 +18,14 @@ def upsert_venue(
 ) -> Venue:
     existing = session.scalars(select(Venue)).all()
     refs = [VenueRef(v.id, v.name, v.address, v.lat, v.lng) for v in existing]
+    cand_ref = VenueRef(None, candidate.name, candidate.address, candidate.lat, candidate.lng)
     # threshold=0.0: queremos o melhor match SEMPRE; a decisao vem das faixas
-    best = match_venue(
-        VenueRef(None, candidate.name, candidate.address, candidate.lat, candidate.lng),
-        refs, threshold=0.0,
-    )
-    decision = classify_venue_match(best.score) if best is not None else "distinct"
+    best = match_venue(cand_ref, refs, threshold=0.0)
+    decision = "distinct"
+    if best is not None:
+        decision = classify_venue_match(
+            best.score, distance_km=geo_distance_km(cand_ref, best.venue)
+        )
 
     if decision == "auto_merge":
         venue = session.get(Venue, best.venue.id)

@@ -60,3 +60,20 @@ def test_classify_venue_match_bands():
     assert classify_venue_match(0.78) == "review"
     assert classify_venue_match(0.70) == "review"
     assert classify_venue_match(0.60) == "distinct"
+
+
+def test_classify_venue_match_distance_gate():
+    # duplicata FISICA nao pode estar a >1km de si mesma (calibrado c/ dados reais)
+    from nightlife.domain.matching import classify_venue_match
+
+    assert classify_venue_match(0.95, distance_km=5.0) == "distinct"
+    assert classify_venue_match(0.75, distance_km=2.0) == "distinct"
+    assert classify_venue_match(0.95, distance_km=0.3) == "auto_merge"
+    assert classify_venue_match(0.75, distance_km=None) == "review"
+
+
+def test_generic_venue_words_do_not_inflate_similarity():
+    # pares reais que caiam em "review" so por compartilhar palavra generica
+    assert name_similarity("Espaço Esplannada", "Espaço Estupendo") < 0.7
+    assert name_similarity("Espaço TH Eventos", "Praça dos Eventos") < 0.7
+    assert name_similarity("Teatro Mooca", "Teatro Bor") < 0.7
