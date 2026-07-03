@@ -58,6 +58,23 @@ def test_pipeline_event_without_resolvable_venue(session):
     assert events[0].confidence == 0
 
 
+class _BoomSource:
+    def venues(self):
+        raise RuntimeError("overpass caiu")
+
+    def event_pages(self):
+        return []
+
+
+def test_pipeline_source_fetch_failure_marks_run_error(session):
+    # falha da fonte inteira (rede/parse) marca o run com erro em vez de estourar
+    run = run_ingestion(session, _BoomSource(), reference=REF, label="osm")
+    session.flush()
+    assert run.status == "error"
+    assert "overpass caiu" in run.errors
+    assert run.finished_at is not None
+
+
 def test_pipeline_multi_event_page_counts_each_event(session):
     # uma pagina jsonld com 2 eventos: found conta 1 pagina, created conta 2 eventos
     two = (

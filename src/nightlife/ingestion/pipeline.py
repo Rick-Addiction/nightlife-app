@@ -45,7 +45,18 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
     found = created = 0
     errors: list[str] = []
 
-    for rv in source.venues():
+    try:
+        raw_venues = list(source.venues())
+        raw_pages = list(source.event_pages())
+    except Exception as exc:  # noqa: BLE001 — a fonte inteira falhou (rede/parse):
+        # marca o run com erro e reporta, em vez de estourar traceback (spec OSM §7)
+        run.status = "error"
+        run.errors = f"fonte {label!r}: {exc}"
+        run.finished_at = datetime.now(timezone.utc)
+        session.flush()
+        return run
+
+    for rv in raw_venues:
         found += 1
         try:
             upsert_venue(
@@ -58,7 +69,7 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
         except Exception as exc:  # noqa: BLE001 — registra e segue
             errors.append(f"venue {rv.name!r}: {exc}")
 
-    for page in source.event_pages():
+    for page in raw_pages:
         found += 1
         try:
             extracted = _extract_page(page, reference)

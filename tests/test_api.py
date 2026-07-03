@@ -122,6 +122,19 @@ def test_effective_confidence_decays_with_staleness(session):
         app.dependency_overrides.clear()
 
 
+def test_venues_sorted_by_effective_confidence_desc(session):
+    a = Venue(name="Fraco", status="operational", confidence=30)
+    b = Venue(name="Forte", status="operational", confidence=80)
+    session.add_all([a, b])
+    session.flush()
+    client = _client(session)
+    try:
+        names = [x["name"] for x in client.get("/venues").json()]
+        assert names.index("Forte") < names.index("Fraco")
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_events_default_hides_past(session):
     v = Venue(name="X")
     session.add(v)
