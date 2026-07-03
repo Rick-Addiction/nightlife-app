@@ -14,6 +14,7 @@ from ..extraction.jsonld import parse_jsonld_events
 from ..models import IngestionRun, Venue
 from ..persistence.events_repo import upsert_event
 from ..persistence.inputs import EventInput, SourceInfo, VenueInput
+from ..persistence.organizers import get_or_create_organizer
 from ..persistence.venues_repo import upsert_venue
 from .base import RawEventPage, Source
 
@@ -48,6 +49,7 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
     try:
         raw_venues = list(source.venues())
         raw_pages = list(source.event_pages())
+        raw_events = list(source.events())
     except Exception as exc:  # noqa: BLE001 — a fonte inteira falhou (rede/parse):
         # marca o run com erro e reporta, em vez de estourar traceback (spec OSM §7)
         run.status = "error"
@@ -95,6 +97,40 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
                 created += 1
             except Exception as exc:  # noqa: BLE001 — registra o evento e segue
                 errors.append(f"page {page.source_url!r} event {ev.name!r}: {exc}")
+
+    for rev in raw_events:
+        found += 1
+        try:
+            venue = None
+            if rev.venue is not None:
+                venue = upsert_venue(
+                    session,
+                    VenueInput(name=rev.venue.name, lat=rev.venue.lat, lng=rev.venue.lng,
+                               address=rev.venue.address, category=rev.venue.category),
+                    SourceInfo(source_type=rev.source_type, source_url=rev.source_url,
+                               raw_payload=rev.raw_payload),
+                    reference=reference,
+                )
+            organizer_id = None
+            if rev.organizer_name:
+                organizer_id = get_or_create_organizer(session, rev.organizer_name).id
+            upsert_event(
+                session,
+                EventInput(
+                    name=rev.name, starts_at=rev.starts_at, ends_at=rev.ends_at,
+                    venue_id=venue.id if venue is not None else None,
+                    venue_name=rev.venue.name if rev.venue is not None else None,
+                    organizer=rev.organizer_name, organizer_id=organizer_id,
+                    genre=rev.genre, ticket_url=rev.ticket_url,
+                    raw_fields={"raw": rev.raw_payload},
+                ),
+                SourceInfo(source_type=rev.source_type, source_url=rev.source_url,
+                           raw_payload=rev.raw_payload),
+                reference=reference,
+            )
+            created += 1
+        except Exception as exc:  # noqa: BLE001 — registra o evento e segue
+            errors.append(f"structured event {rev.name!r}: {exc}")
 
     run.status = "finished"
     run.records_found = found

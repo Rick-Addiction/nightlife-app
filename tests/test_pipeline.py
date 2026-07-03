@@ -89,3 +89,30 @@ def test_pipeline_multi_event_page_counts_each_event(session):
     assert run.records_found == 1       # 1 pagina
     assert run.records_created == 2     # 2 eventos
     assert len(session.scalars(select(Event)).all()) == 2
+
+
+def test_pipeline_ingests_structured_events(session):
+    from datetime import datetime, timezone
+
+    from nightlife.ingestion.base import RawEvent
+    from nightlife.models import Organizer
+
+    rv = RawVenue(name="Lab Club", source_type="ticketing", lat=-23.56, lng=-46.65)
+    rev = RawEvent(name="Mamba Negra", source_type="ticketing",
+                   starts_at=datetime(2099, 6, 14, 2, 0, tzinfo=timezone.utc),
+                   venue=rv, organizer_name="Mamba Org", genre="Festa",
+                   ticket_url="https://sympla/e/1", source_url="https://sympla/e/1",
+                   raw_payload="{}")
+    src = MockSource([], [], events=[rev])
+    run = run_ingestion(session, src, reference=REF)
+    session.flush()
+
+    assert run.records_found == 1 and run.records_created == 1
+    v = session.scalars(select(Venue)).one()
+    assert v.name == "Lab Club" and v.lat == -23.56
+    e = session.scalars(select(Event)).one()
+    assert e.venue_id == v.id and e.genre == "Festa" and e.ticket_url == "https://sympla/e/1"
+    org = session.scalars(select(Organizer)).one()
+    assert e.organizer_id == org.id and org.name == "Mamba Org"
+    assert e.confidence == 20 + 20 + 25  # future + venue + ticketing
+    assert v.confidence == 15            # future_event_linked (ticketing contribui 0 no venue)
