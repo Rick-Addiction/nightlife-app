@@ -1,15 +1,19 @@
 # src/nightlife/persistence/events_repo.py
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..domain.dedupe import EventKey, compare
-from ..domain.scoring import EventSignals, score_event
-from ..models import DedupeCandidate, Event, EventSource
-from ._utils import payload_hash
+from ..models import DedupeCandidate, Event, Venue
+from .confidence import (
+    EVENT_SOURCE_CONTRIBUTION,
+    recompute_event_confidence,
+    recompute_venue_confidence,
+)
+from .evidence import record_event_evidence
 from .inputs import EventInput, SourceInfo
 
 
@@ -19,8 +23,7 @@ def _key_from_input(c: EventInput) -> EventKey:
 
 
 def _key_from_row(e: Event) -> EventKey:
-    # organizer so existe quando organizer_id foi linkado (o pipeline do Plano C fara isso);
-    # no esqueleto e.organizer e None, entao a dimensao organizer do dedupe fica inativa.
+    # organizer so existe quando organizer_id foi linkado (fonte futura fara isso)
     venue_name = e.venue.name if e.venue is not None else None
     organizer = e.organizer.name if e.organizer is not None else None
     return EventKey(name=e.name, starts_at=e.starts_at, venue_name=venue_name,
@@ -28,7 +31,7 @@ def _key_from_row(e: Event) -> EventKey:
 
 
 def upsert_event(
-    session: Session, candidate: EventInput, source: SourceInfo, signals: EventSignals
+    session: Session, candidate: EventInput, source: SourceInfo, *, reference: date
 ) -> Event:
     cand_key = _key_from_input(candidate)
     existing = session.scalars(select(Event)).all()
@@ -43,7 +46,7 @@ def upsert_event(
     if best is not None and best.decision == "auto_merge":
         event = best_row
         event.last_seen_at = datetime.now(timezone.utc)
-        # preenche lacunas sem sobrescrever dados ja existentes (como upsert_venue):
+        # preenche lacunas sem sobrescrever dados ja existentes:
         # ex. flyer sem data parseavel + pagina de ticketing com startDate real
         event.starts_at = event.starts_at if event.starts_at is not None else candidate.starts_at
         event.ends_at = event.ends_at if event.ends_at is not None else candidate.ends_at
@@ -51,8 +54,6 @@ def upsert_event(
         event.ticket_url = event.ticket_url or candidate.ticket_url
         event.genre = event.genre or candidate.genre
         event.lineup_text = event.lineup_text or candidate.lineup_text
-        # uma nova fonte so pode REFORCAR a confianca, nunca rebaixar
-        event.confidence = max(event.confidence, score_event(signals))
     else:
         event = Event(
             name=candidate.name, starts_at=candidate.starts_at, ends_at=candidate.ends_at,
@@ -67,14 +68,15 @@ def upsert_event(
                 kind="event", a_id=event.id, b_id=best_row.id,
                 similarity_score=best.score, decision="review",
             ))
-        event.confidence = score_event(signals)
 
-    session.add(EventSource(
-        event_id=event.id,
-        source_type=source.source_type,
-        source_url=source.source_url,
-        raw_payload_hash=payload_hash(source.raw_payload),
-        extracted_fields=source.extracted_fields,
-        confidence_contribution=event.confidence,
-    ))
+    record_event_evidence(
+        session, event.id, source,
+        contribution=EVENT_SOURCE_CONTRIBUTION.get(source.source_type, 0),
+    )
+    recompute_event_confidence(session, event, reference=reference)
+    # um evento futuro linkado muda o sinal future_event_linked do venue
+    if event.venue_id is not None:
+        venue = session.get(Venue, event.venue_id)
+        if venue is not None:
+            recompute_venue_confidence(session, venue, reference=reference)
     return event
