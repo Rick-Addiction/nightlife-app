@@ -63,3 +63,18 @@ def match_venue(candidate: VenueRef, existing: list[VenueRef], *, threshold: flo
     if best is not None and best.score >= threshold:
         return best
     return None
+
+
+VENUE_MERGE_THRESHOLD = 0.85
+VENUE_REVIEW_THRESHOLD = 0.70
+
+
+def classify_venue_match(score: float) -> str:
+    """Faixas de decisao para upsert de venue: merge automatico so em alta
+    confianca; a faixa intermediaria cria venue novo + candidato de revisao
+    (um merge errado de venue envenena a ancora de todos os eventos)."""
+    if score >= VENUE_MERGE_THRESHOLD:
+        return "auto_merge"
+    if score >= VENUE_REVIEW_THRESHOLD:
+        return "review"
+    return "distinct"

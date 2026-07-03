@@ -50,3 +50,13 @@ def test_stopword_only_name_matches_itself():
     assert name_similarity("A Casa", "A Casa") == 1.0
     m = match_venue(VenueRef(None, "A Casa"), [VenueRef(1, "A Casa")])
     assert m is not None and m.venue.id == 1
+
+
+def test_classify_venue_match_bands():
+    from nightlife.domain.matching import classify_venue_match
+
+    assert classify_venue_match(0.90) == "auto_merge"
+    assert classify_venue_match(0.85) == "auto_merge"
+    assert classify_venue_match(0.78) == "review"
+    assert classify_venue_match(0.70) == "review"
+    assert classify_venue_match(0.60) == "distinct"
