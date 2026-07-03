@@ -6,6 +6,14 @@ Re-executar e seguro: matching reusa venues e a evidencia e idempotente.
 """
 from __future__ import annotations
 
+import truststore
+
+# Usa o repositorio de certificados do WINDOWS em vez do bundle do certifi:
+# antivirus como o Avast interceptam HTTPS re-assinando com CA propria (que so
+# existe no cert store do SO) — sem isto, qualquer chamada real falha com
+# CERTIFICATE_VERIFY_FAILED nesta maquina.
+truststore.inject_into_ssl()
+
 from datetime import date
 
 from sqlalchemy import func, select
