@@ -111,6 +111,9 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
                                raw_payload=rev.raw_payload),
                     reference=reference,
                 )
+            elif rev.venue_name:
+                # flyer da nome sem geo (e com typo): ancora no catalogo, nunca cria
+                venue = _resolve_venue(session, rev.venue_name)
             organizer_id = None
             if rev.organizer_name:
                 organizer_id = get_or_create_organizer(session, rev.organizer_name).id
@@ -119,9 +122,10 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
                 EventInput(
                     name=rev.name, starts_at=rev.starts_at, ends_at=rev.ends_at,
                     venue_id=venue.id if venue is not None else None,
-                    venue_name=rev.venue.name if rev.venue is not None else None,
+                    venue_name=rev.venue.name if rev.venue is not None else rev.venue_name,
                     organizer=rev.organizer_name, organizer_id=organizer_id,
                     genre=rev.genre, ticket_url=rev.ticket_url,
+                    lineup_text=rev.lineup_text,
                     raw_fields={"raw": rev.raw_payload},
                 ),
                 SourceInfo(source_type=rev.source_type, source_url=rev.source_url,

@@ -135,3 +135,28 @@ def test_pipeline_ingests_structured_events(session):
     assert e.organizer_id == org.id and org.name == "Mamba Org"
     assert e.confidence == 20 + 20 + 25  # future + venue + ticketing
     assert v.confidence == 15            # future_event_linked (ticketing contribui 0 no venue)
+
+
+def test_pipeline_anchors_by_venue_name_without_creating(session):
+    from datetime import datetime, timezone
+
+    from nightlife.ingestion.base import RawEvent
+
+    v = Venue(name="Lab Club")
+    session.add(v)
+    session.flush()
+
+    known = RawEvent(name="Festa do Flyer", source_type="vision_flyer",
+                     starts_at=datetime(2099, 6, 14, 2, 0, tzinfo=timezone.utc),
+                     venue_name="Lab Club", lineup_text="DJ A, DJ B")
+    unknown = RawEvent(name="Festa Misteriosa", source_type="vision_flyer",
+                       starts_at=datetime(2099, 7, 14, 2, 0, tzinfo=timezone.utc),
+                       venue_name="Clube Que Nao Existe Xyz")
+    run_ingestion(session, MockSource([], [], events=[known, unknown]), reference=REF)
+    session.flush()
+
+    assert len(session.scalars(select(Venue)).all()) == 1  # NAO criou venue novo
+    events = {e.name: e for e in session.scalars(select(Event)).all()}
+    assert events["Festa do Flyer"].venue_id == v.id       # ancorou por nome
+    assert events["Festa do Flyer"].lineup_text == "DJ A, DJ B"
+    assert events["Festa Misteriosa"].venue_id is None     # desconhecido: sem venue

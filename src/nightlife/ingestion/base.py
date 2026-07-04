@@ -37,6 +37,8 @@ class RawEvent:
     starts_at: datetime | None = None   # tz-aware (UTC da API)
     ends_at: datetime | None = None
     venue: RawVenue | None = None
+    venue_name: str | None = None       # so ANCORA em venue existente (flyer: nome sem geo)
+    lineup_text: str | None = None
     organizer_name: str | None = None
     genre: str | None = None
     ticket_url: str | None = None
