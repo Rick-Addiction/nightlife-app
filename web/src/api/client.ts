@@ -1,6 +1,6 @@
 import type { EventOut, VenueOut } from './types'
 
-export interface EventQuery {
+export type EventQuery = {
   date_from?: string
   date_to?: string
   genre?: string
@@ -9,7 +9,7 @@ export interface EventQuery {
   include_past?: boolean
 }
 
-export interface VenueQuery {
+export type VenueQuery = {
   type?: string
   min_confidence?: number
   bbox?: string
