@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Callable
 
@@ -35,12 +37,27 @@ def _run_codex(image_path: Path, prompt: str) -> str:
     """Invoca o codex CLI em modo nao-interativo com a imagem anexada.
 
     Flags calibrados no smoke real (Task 5) — requisito: exec headless,
-    imagem como input, resultado no stdout.
+    imagem como input, resultado no stdout. Tres calibracoes necessarias:
+    (1) no Windows o `codex` instalado via npm resolve para um shim
+    `codex.CMD`, que subprocess.run nao consegue executar diretamente
+    (WinError 2) sem `shell=True`; resolvemos o caminho completo via
+    shutil.which e usamos shell so no Windows;
+    (2) `-i/--image` aceita `FILE...` (multiplos valores) e por isso e
+    "guloso": se o PROMPT vier depois de `-i <path>` na linha de comando,
+    o parser do CLI engole o prompt como se fosse mais um arquivo de imagem;
+    (3) com `shell=True` no Windows a lista de args e serializada numa unica
+    string para o `cmd.exe /c`, cujo parser trunca a linha em quebras de
+    linha literais — o PROMPT (multi-linha) nunca chegava inteiro ao codex.
+    Por isso o PROMPT e enviado via stdin (`-` como posicional, doc do CLI:
+    "instructions are read from stdin") em vez de argv, e soh o caminho da
+    imagem (sem quebras de linha) trafega na linha de comando.
     """
+    codex_bin = shutil.which("codex") or "codex"
     result = subprocess.run(
-        ["codex", "exec", "--skip-git-repo-check", "-i", str(image_path), prompt],
+        [codex_bin, "exec", "--skip-git-repo-check", "-", "-i", str(image_path)],
+        input=prompt,
         capture_output=True, text=True, encoding="utf-8", errors="replace",
-        timeout=300,
+        timeout=300, shell=(sys.platform == "win32"),
     )
     return result.stdout or ""
 

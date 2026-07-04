@@ -37,7 +37,13 @@ docker compose up -d --wait                        # Postgres+PostGIS (porta 543
 ```bash
 .venv/Scripts/python -m nightlife.ingest_osm      # baladas + casas de evento de SP (Overpass)
 .venv/Scripts/python -m nightlife.ingest_sympla   # eventos de festas/shows de SP (Sympla)
+.venv/Scripts/python -m nightlife.ingest_flyers   # flyers do inbox flyers/ (visao via codex CLI)
 ```
+
+Flyers: jogue imagens (print de story, download de post) em `flyers/` e rode o
+runner — a extração usa o Codex CLI da sua assinatura (custo marginal zero).
+Processadas vão para `flyers/processed/`, falhas para `flyers/failed/`
+(nenhuma imagem é extraída duas vezes).
 
 Re-executar é seguro (matching reusa venues; evidência é idempotente). O runner
 imprime quantos pares de venue caíram na fila de revisão (`dedupe_candidates`)
