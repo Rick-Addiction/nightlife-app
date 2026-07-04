@@ -1,0 +1,14 @@
+:root {
+  --bg-0: #0a0e1e; --bg-1: #140a1e; --panel: #0e1428; --border: #1e2a44;
+  --cyan: #22e0e0; --magenta: #e055c0; --text: #dde; --muted: #8ab;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: linear-gradient(160deg, var(--bg-0), var(--bg-1)); color: var(--text); font-family: system-ui, sans-serif; }
+.evcard { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin: 8px; cursor: pointer; }
+.evcard.sel { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
+.evcard .name { font-size: 15px; font-weight: 700; background: linear-gradient(90deg, var(--cyan), var(--magenta)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.evcard .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.evcard .conf { color: var(--cyan); font-weight: 700; float: right; }
+.evcard .tag { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 5px; background: #e055c018; color: #e07dd0; margin-top: 8px; margin-right: 5px; }
+.evcard .nogeo { color: #d9a; }
+.empty { padding: 40px; text-align: center; color: var(--muted); }

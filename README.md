@@ -70,3 +70,20 @@ A fonte mock (`ingestion/mock_source.py` + `fixtures/`) é o exemplo de referên
 ## Status
 
 Esqueleto (walking skeleton) completo com dados mock: domínio + persistência + ingestão + API, com testes. Fontes reais (Places/OSM/ticketing/Instagram), extração multimodal de flyers, Telegram e a UI de lista/mapa são os próximos passos.
+
+## UI web (lista + mapa)
+
+Requer Node 20+. Em dois terminais:
+
+```bash
+# 1. Backend (API em :8001)
+docker compose up -d --wait
+.venv/Scripts/python -m uvicorn nightlife.api.main:app --port 8001
+
+# 2. UI (Vite em :5173, faz proxy de /api -> :8001)
+cd web && npm install && npm run dev
+```
+
+Abra http://localhost:5173. Barra de filtros (data/gênero/confiança) dirige lista e mapa juntos; toggle "Só lista ↔ Lista + Mapa". Eventos sem venue geo aparecem na lista com selo "local a confirmar".
+
+Testes da UI: `cd web && npm run test`.
