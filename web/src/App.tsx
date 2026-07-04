@@ -14,6 +14,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -23,7 +24,7 @@ export default function App() {
       .catch((e) => { if (alive) setError(String(e)) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [filters])
+  }, [filters, reloadKey])
 
   const genres = useMemo(
     () => Array.from(new Set(events.map((e) => e.genre).filter((g): g is string => !!g))).sort(),
@@ -33,7 +34,14 @@ export default function App() {
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <FilterBar filters={filters} genres={genres} dispatch={dispatch} view={view} onView={setView} />
-      {error && <div className="empty" style={{ color: '#e07dd0' }}>Não consegui falar com a API — o uvicorn está no ar? ({error})</div>}
+      {error && (
+        <div className="empty" style={{ color: '#e07dd0' }}>
+          Não consegui falar com a API — o uvicorn está no ar? ({error})
+          <div style={{ marginTop: 12 }}>
+            <button onClick={() => setReloadKey((k) => k + 1)}>Tentar de novo</button>
+          </div>
+        </div>
+      )}
       {loading && <div className="empty">Carregando…</div>}
       {!loading && !error && (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>

@@ -23,4 +23,14 @@ describe('filters', () => {
     const all = queryFromFilters({ preset: 'all', genre: null, minConfidence: 0, includePast: true })
     expect(all.include_past).toBe(true)
   })
+  it('datas usam o dia LOCAL (nao UTC) mesmo a noite — app noturno', () => {
+    // sab 04/07/2026 21h no fuso LOCAL do host (independe do TZ do runner)
+    const evening = new Date(2026, 6, 4, 21, 0, 0)
+    const hoje = queryFromFilters({ preset: 'today', genre: null, minConfidence: 0, includePast: false }, evening)
+    expect(hoje.date_from).toBe('2026-07-04')
+    expect(hoje.date_to).toBe('2026-07-04')
+    const wknd = queryFromFilters({ preset: 'weekend', genre: null, minConfidence: 0, includePast: false }, evening)
+    expect(wknd.date_from).toBe('2026-07-10') // proxima sexta
+    expect(wknd.date_to).toBe('2026-07-12')   // domingo
+  })
 })

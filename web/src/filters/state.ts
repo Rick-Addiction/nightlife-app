@@ -29,7 +29,10 @@ export function filterReducer(state: FilterState, action: FilterAction): FilterS
 }
 
 function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  // Dia do CALENDARIO LOCAL, nao UTC — app de vida noturna usado a noite:
+  // toISOString() desloca +1 dia em fusos negativos (UTC-3) apos ~21h.
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 export function queryFromFilters(f: FilterState, now: Date = new Date()): EventQuery {
