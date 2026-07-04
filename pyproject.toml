@@ -13,6 +13,7 @@ dependencies = [
     "alembic>=1.13",
     "httpx>=0.27",
     "truststore>=0.9",
+    "pillow>=10.0",
 ]
 
 [project.optional-dependencies]
