@@ -2,6 +2,9 @@
 import json
 from pathlib import Path
 
+from PIL import Image
+
+from nightlife.ingestion import codex_extractor as ce
 from nightlife.ingestion.codex_extractor import CodexExtractor
 
 GOOD_JSON = json.dumps({
@@ -43,3 +46,26 @@ def test_retry_once_on_invalid_then_success(tmp_path):
 def test_gives_up_after_retry(tmp_path):
     result = CodexExtractor(runner=lambda p, q: "lixo sem json").extract(tmp_path / "f.png")
     assert result is None
+
+
+def test_run_codex_isolates_untrusted_filename_and_stdin_prompt(tmp_path, monkeypatch):
+    # nome de arquivo com metacaractere de shell NAO pode chegar ao argv;
+    # o prompt (multi-linha) vai por stdin
+    evil = tmp_path / "a&whoami&b.png"
+    Image.new("RGB", (10, 10), "#111").save(evil)
+
+    captured = {}
+
+    def fake_run(argv, **kwargs):
+        captured["argv"] = list(argv)
+        captured["kwargs"] = kwargs
+
+        class _R:
+            stdout = '{"event_name": null}'
+        return _R()
+
+    monkeypatch.setattr(ce.subprocess, "run", fake_run)
+    ce._run_codex(evil, "PROMPT\nMULTI\nLINHA")
+
+    assert "whoami" not in " ".join(captured["argv"])   # nome perigoso isolado
+    assert captured["kwargs"]["input"] == "PROMPT\nMULTI\nLINHA"  # prompt via stdin

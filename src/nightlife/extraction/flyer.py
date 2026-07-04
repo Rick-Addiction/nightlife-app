@@ -55,12 +55,20 @@ def flyer_to_raw_event(
         if url and not _is_generic_link(url):
             ticket = url
 
+    # Anti-alucinacao (spec §4): venue_name e organizer tem efeito downstream
+    # (ancoram / criam Organizer). Descarta os que estao SUSPEITOS — confianca
+    # ajustada < 0.5 (sem quote que os sustente, ou confianca genuinamente
+    # baixa) — em vez de ancorar/criar a partir de um chute do modelo.
+    adj = extraction.adjusted_confidence()
+    venue_name = extraction.venue_name if adj.get("venue_name", 0.0) >= 0.5 else None
+    organizer = extraction.organizer if adj.get("organizer", 0.0) >= 0.5 else None
+
     return RawEvent(
         name=extraction.event_name,
         source_type="vision_flyer",
         starts_at=starts,
-        venue_name=extraction.venue_name,   # ancora no catalogo; nunca cria venue
-        organizer_name=extraction.organizer,
+        venue_name=venue_name,              # ancora no catalogo; nunca cria venue
+        organizer_name=organizer,
         lineup_text=", ".join(extraction.lineup) or None,
         ticket_url=ticket,
         source_url=f"flyer:{image_hash}",

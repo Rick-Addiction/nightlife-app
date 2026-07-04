@@ -6,6 +6,7 @@ import logging
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Callable
 
@@ -51,18 +52,34 @@ def _run_codex(image_path: Path, prompt: str) -> str:
     Por isso o PROMPT e enviado via stdin (`-` como posicional, doc do CLI:
     "instructions are read from stdin") em vez de argv, e soh o caminho da
     imagem (sem quebras de linha) trafega na linha de comando.
+
+    SEGURANCA: com shell=True no Windows, um argumento com metacaractere de
+    cmd.exe (& | %) e SEM espaco passa sem aspas e e interpretado pelo shell —
+    um flyer baixado como "a&whoami&b.png" executaria comando arbitrario. O
+    nome do arquivo vem de download/print (nao-confiavel; e a pasta que um
+    monitor de IG futuro vai popular). Por isso a imagem e copiada para um
+    nome CONTROLADO (sem metacaractere) num tempdir antes de ir para a linha
+    de comando; o nome original nunca chega ao shell.
     """
     codex_bin = shutil.which("codex") or "codex"
-    result = subprocess.run(
-        [codex_bin, "exec", "--skip-git-repo-check", "-", "-i", str(image_path)],
-        input=prompt,
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
-        timeout=300, shell=(sys.platform == "win32"),
-    )
+    src = Path(image_path)
+    suffix = src.suffix if src.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp") else ".png"
+    with tempfile.TemporaryDirectory() as tmp:
+        safe = Path(tmp) / f"flyer{suffix}"
+        shutil.copyfile(src, safe)
+        result = subprocess.run(
+            [codex_bin, "exec", "--skip-git-repo-check", "-", "-i", str(safe)],
+            input=prompt,
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=300, shell=(sys.platform == "win32"),
+        )
     return result.stdout or ""
 
 
 def _extract_json(text: str) -> dict:
+    # heuristica do 1o "{" ao ultimo "}": o CLI cerca o JSON de logs/preambulo.
+    # Se o preambulo tiver seu proprio par de chaves, rfind pega o span errado
+    # e a extracao falha (consome o retry) — aceito pra o esqueleto.
     start, end = text.find("{"), text.rfind("}")
     if start == -1 or end <= start:
         raise ValueError("nenhum objeto JSON na saida")

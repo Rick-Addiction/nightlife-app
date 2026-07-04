@@ -57,3 +57,15 @@ def test_flyer_to_raw_event_guards():
     ext2 = FlyerExtraction.model_validate({**GOOD, "ticket_url": "https://linktr.ee/clubx"})
     rev2 = flyer_to_raw_event(ext2, "x", reference=REF)
     assert rev2.ticket_url is None
+
+
+def test_unquoted_venue_and_organizer_dropped():
+    # anti-alucinacao: venue/organizer sem quote que os sustente sao descartados
+    # (nao ancoram nem criam Organizer a partir de um chute), mas o evento sobrevive
+    ext = FlyerExtraction.model_validate({
+        **GOOD,
+        "quotes": {"event_name": "MAMBA NEGRA", "date_text": "SEX 13/06 23h"},
+    })
+    rev = flyer_to_raw_event(ext, "x", reference=REF)
+    assert rev.name == "MAMBA NEGRA"
+    assert rev.venue_name is None and rev.organizer_name is None

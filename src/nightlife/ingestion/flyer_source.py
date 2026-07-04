@@ -51,10 +51,13 @@ class FlyerSource:
             seen_hashes.add(image_hash)
 
             extraction = self._extractor.extract(path)
-            raw_event = (flyer_to_raw_event(extraction, image_hash, reference=self._reference)
-                         if extraction is not None else None)
+            if extraction is None:
+                _log.warning("flyer %s: extracao falhou (codex) — investigar", path.name)
+                self.failed_paths.append(path)
+                continue
+            raw_event = flyer_to_raw_event(extraction, image_hash, reference=self._reference)
             if raw_event is None:
-                _log.warning("flyer %s: extracao falhou ou sem nome de evento", path.name)
+                _log.info("flyer %s: sem nome de evento (imagem nao e flyer?)", path.name)
                 self.failed_paths.append(path)
                 continue
             out.append(raw_event)
