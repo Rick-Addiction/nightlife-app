@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import './theme.css'
 import { fetchEvents, fetchVenues } from './api/client'
 import { joinEventsWithVenues, type EventWithGeo } from './data/join'
@@ -15,6 +15,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [genres, setGenres] = useState<string[]>([])
 
   useEffect(() => {
     let alive = true
@@ -26,10 +27,18 @@ export default function App() {
     return () => { alive = false }
   }, [filters, reloadKey])
 
-  const genres = useMemo(
-    () => Array.from(new Set(events.map((e) => e.genre).filter((g): g is string => !!g))).sort(),
-    [events],
-  )
+  // Universo de generos: de um fetch NAO-filtrado (uma vez), pra o dropdown
+  // nao colapsar quando um genero e selecionado (o fetch principal e filtrado).
+  useEffect(() => {
+    let alive = true
+    fetchEvents({ include_past: true })
+      .then((evs) => {
+        if (!alive) return
+        setGenres(Array.from(new Set(evs.map((e) => e.genre).filter((g): g is string => !!g))).sort())
+      })
+      .catch(() => { /* silencioso: dropdown so fica sem opcoes extras */ })
+    return () => { alive = false }
+  }, [])
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
