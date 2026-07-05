@@ -26,10 +26,13 @@ FLYERS_DIR = Path("flyers")
 def _move_all(paths: list[Path], dest: Path) -> None:
     dest.mkdir(parents=True, exist_ok=True)
     for p in paths:
-        target = dest / p.name
-        if target.exists():
-            target.unlink()
-        shutil.move(str(p), str(target))
+        for f in (p, p.with_suffix(".json")):  # imagem + sidecar (se houver)
+            if not f.exists():
+                continue
+            target = dest / f.name
+            if target.exists():
+                target.unlink()
+            shutil.move(str(f), str(target))
 
 
 def main() -> None:

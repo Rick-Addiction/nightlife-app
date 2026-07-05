@@ -1,6 +1,7 @@
 # src/nightlife/ingestion/flyer_source.py
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date
 from pathlib import Path
@@ -50,12 +51,23 @@ class FlyerSource:
                 continue
             seen_hashes.add(image_hash)
 
-            extraction = self._extractor.extract(path)
+            sidecar = path.with_suffix(".json")
+            caption = permalink = None
+            if sidecar.exists():
+                try:
+                    meta = json.loads(sidecar.read_text(encoding="utf-8"))
+                    caption = meta.get("caption")
+                    permalink = meta.get("permalink")
+                except (ValueError, OSError):
+                    pass
+
+            extraction = self._extractor.extract(path, caption=caption)
             if extraction is None:
                 _log.warning("flyer %s: extracao falhou (codex) — investigar", path.name)
                 self.failed_paths.append(path)
                 continue
-            raw_event = flyer_to_raw_event(extraction, image_hash, reference=self._reference)
+            raw_event = flyer_to_raw_event(extraction, image_hash,
+                                           reference=self._reference, permalink=permalink)
             if raw_event is None:
                 _log.info("flyer %s: sem nome de evento (imagem nao e flyer?)", path.name)
                 self.failed_paths.append(path)

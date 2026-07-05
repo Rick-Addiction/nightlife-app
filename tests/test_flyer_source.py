@@ -22,7 +22,7 @@ class _FakeExtractor:
         self.results = results  # por nome de arquivo
         self.calls = []
 
-    def extract(self, image_path):
+    def extract(self, image_path, *, caption=None):
         self.calls.append(image_path.name)
         return self.results.get(image_path.name)
 
@@ -57,3 +57,26 @@ def test_failed_extraction_goes_to_failed(tmp_path):
     assert src.events() == []
     assert [p.name for p in src.failed_paths] == ["ruim.png"]
     assert src.processed_paths == []
+
+
+import json
+
+
+def test_le_sidecar_e_passa_caption_e_permalink(tmp_path):
+    _img(tmp_path / "P3.png", seed=5)
+    (tmp_path / "P3.json").write_text(json.dumps({
+        "handle": "mambanegra", "permalink": "https://www.instagram.com/p/P3/",
+        "caption": "Sabado 13/06 na Lab", "taken_at": 1717800000,
+    }), encoding="utf-8")
+
+    seen = {}
+
+    class _Extractor:
+        def extract(self, image_path, *, caption=None):
+            seen["caption"] = caption
+            return _extraction("Mamba")
+
+    src = FlyerSource(tmp_path, _Extractor(), reference=REF)
+    events = src.events()
+    assert seen["caption"] == "Sabado 13/06 na Lab"          # legenda repassada
+    assert events[0].source_url == "https://www.instagram.com/p/P3/"  # permalink vira evidencia
