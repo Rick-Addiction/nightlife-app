@@ -119,3 +119,51 @@ def scrape_handle(
     # cursor novo = o post mais recente visto (posts[0]); se nao havia posts, mantem
     new_cursor = posts[0].shortcode if posts else last_shortcode
     return ScrapeResult(handle=handle, last_shortcode=new_cursor, downloaded=downloaded)
+
+
+def open_context(user_data_dir: Path, *, headful: bool):
+    """Abre um persistent context do chromium com a sessao da burner."""
+    from playwright.sync_api import sync_playwright  # lazy: so quando de fato scrapeia
+    pw = sync_playwright().start()
+    context = pw.chromium.launch_persistent_context(
+        str(user_data_dir), headless=not headful,
+    )
+    return pw, context
+
+
+def playwright_fetch_posts(context, handle: str) -> list[IgPost]:
+    """Navega ao perfil e captura as respostas JSON do IG; parse_profile_posts
+    (puro, testado) filtra a que tem o timeline (spec §6.3).
+
+    BRITTLE por natureza (o IG ofusca/muda): calibrar no smoke. Capturamos todo
+    JSON e delegamos ao parse — o contrato estavel e parse_profile_posts."""
+    page = context.new_page()
+    captured: list[dict] = []
+
+    def _on_response(resp):
+        if "application/json" not in resp.headers.get("content-type", ""):
+            return
+        try:
+            data = resp.json()
+        except Exception:  # noqa: BLE001 — nem toda resposta JSON e util
+            return
+        if isinstance(data, dict):
+            captured.append(data)  # parse_profile_posts acha a que tem timeline
+
+    page.on("response", _on_response)
+    page.goto(f"https://www.instagram.com/{handle}/", wait_until="networkidle", timeout=45000)
+    page.wait_for_timeout(2500)
+    posts: list[IgPost] = []
+    for data in captured:
+        posts = parse_profile_posts(data)
+        if posts:
+            break
+    page.close()
+    return posts
+
+
+def playwright_download(context, post: IgPost, dest: Path) -> Path:
+    """Baixa a imagem do post usando a sessao autenticada (cookies do context)."""
+    resp = context.request.get(post.image_url, timeout=30000)
+    dest.write_bytes(resp.body())
+    return dest
