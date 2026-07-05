@@ -229,7 +229,7 @@ from __future__ import annotations
 
 import re
 
-_IG_URL = re.compile(r"(?:https?://)?(?:www\.)?instagram\.com/([^/?#\s]+)", re.IGNORECASE)
+_IG_URL = re.compile(r"(?:https?://)?(?:www\.)?instagram\.com/([^/?#\s\"'<>]+)", re.IGNORECASE)
 _MENTION = re.compile(r"@([A-Za-z0-9._]+)")
 # caminhos do instagram.com que NAO sao perfil de usuario:
 _NON_PROFILE = {
