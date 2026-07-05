@@ -87,3 +87,25 @@ cd web && npm install && npm run dev
 Abra http://localhost:5173. Barra de filtros (data/gênero/confiança) dirige lista e mapa juntos; toggle "Só lista ↔ Lista + Mapa". Eventos sem venue geo aparecem na lista com selo "local a confirmar".
 
 Testes da UI: `cd web && npm run test`.
+
+## Instagram (descoberta de handles + scraper de flyers)
+
+Requer Playwright: `.venv/Scripts/python -m pip install playwright && .venv/Scripts/python -m playwright install chromium`.
+
+```bash
+# 1. Descobrir os @handles dos venues/organizers (tags OSM + sites + Sympla)
+.venv/Scripts/python -m nightlife.discover_handles
+
+# 2. Logar a conta BURNER (uma vez; janela do Chromium abre p/ login manual)
+.venv/Scripts/python -m nightlife.ig_login
+
+# 3. Varrer os perfis -> baixa flyers recentes (imagem + sidecar) pro inbox flyers/
+.venv/Scripts/python -m nightlife.ingest_ig
+
+# 4. Extrair os flyers baixados -> eventos no banco (pipeline de visao)
+.venv/Scripts/python -m nightlife.ingest_flyers
+```
+
+Ritmo conservador (1x/dia, headful, delays humanos, caps em `config.py`). Use uma
+conta **burner** (não a principal): o Instagram pode bloquear automação. Handles
+com falhas repetidas são auto-pausados.
