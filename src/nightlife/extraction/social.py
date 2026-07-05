@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import re
 
-_IG_URL = re.compile(r"(?:https?://)?(?:www\.)?instagram\.com/([^/?#\s\"'<>]+)", re.IGNORECASE)
-_MENTION = re.compile(r"@([A-Za-z0-9._]+)")
+_IG_URL = re.compile(r"(?:https?://)?(?:www\.)?instagram\.com/([^/?#\s\"'<>),\]]+)", re.IGNORECASE)
+# lookbehind (?<![\w.]): nao casa @ dentro de e-mail (ex.: booking@gmail.com)
+_MENTION = re.compile(r"(?<![\w.])@([A-Za-z0-9._]+)")
 # caminhos do instagram.com que NAO sao perfil de usuario:
 _NON_PROFILE = {
     "p", "reel", "reels", "explore", "stories", "tv", "accounts",
@@ -53,16 +54,25 @@ def handles_from_text(text: str | None) -> set[str]:
     return out
 
 
-_OSM_KEYS = ("contact:instagram", "instagram", "contact:website", "website")
+def _handle_if_ig_url(value: str | None) -> str | None:
+    """Handle so se `value` for uma URL de instagram.com — nao um dominio proprio.
+
+    Sem isto, um `website=cargo.com.br` (dominio pelado, sem esquema) seria aceito
+    como se fosse o handle 'cargo.com.br'."""
+    if value and _IG_URL.search(value):
+        return canonical_handle(value)
+    return None
 
 
 def handle_from_osm_tags(tags: dict) -> str | None:
-    """Tags OSM -> handle. Prioriza chaves de instagram; website so conta se for URL de IG."""
-    for key in _OSM_KEYS:
-        val = tags.get(key)
-        if not val:
-            continue
-        h = canonical_handle(val)
+    """Tags OSM -> handle. Chaves de instagram aceitam handle direto; chaves de
+    website so contam se o valor for uma URL de instagram (nao o site proprio)."""
+    for key in ("contact:instagram", "instagram"):
+        h = canonical_handle(tags.get(key))
+        if h:
+            return h
+    for key in ("contact:website", "website"):
+        h = _handle_if_ig_url(tags.get(key))
         if h:
             return h
     return None

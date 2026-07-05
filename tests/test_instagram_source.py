@@ -41,6 +41,17 @@ def test_parse_profile_posts_vazio():
     assert parse_profile_posts({"data": {"user": None}}) == []
 
 
+def test_parse_rejeita_shortcode_malicioso():
+    bad = {"data": {"user": {"edge_owner_to_timeline_media": {"edges": [
+        {"node": {"shortcode": "../victim/pwned", "display_url": "u",
+                  "edge_media_to_caption": {"edges": []}}},
+        {"node": {"shortcode": "Bom_Shortcode-1", "display_url": "u2",
+                  "edge_media_to_caption": {"edges": []}}},
+    ]}}}}
+    posts = parse_profile_posts(bad)
+    assert [p.shortcode for p in posts] == ["Bom_Shortcode-1"]  # o malicioso e descartado
+
+
 import json
 from nightlife.ingestion.instagram_source import scrape_handle, ScrapeConfig
 
@@ -91,3 +102,17 @@ def test_scrape_handle_sem_posts_novos_mantem_cursor(tmp_path):
                            download=lambda p, d: d, config=cfg)
     assert result.last_shortcode == "P9"          # nada novo: cursor inalterado
     assert result.downloaded == 0
+
+
+def test_scrape_handle_mantem_cursor_se_download_falha(tmp_path):
+    # todos os downloads falham -> cursor NAO avanca (retry no proximo run)
+    def boom(post, dest):
+        raise OSError("rede caiu")
+
+    cfg = ScrapeConfig(inbox=tmp_path, cap=10)
+    result = scrape_handle("h", last_shortcode="P1",
+                           fetch_posts=lambda h: [IgPost("P3", "u3", None, 3),
+                                                  IgPost("P2", "u2", None, 2)],
+                           download=boom, config=cfg)
+    assert result.downloaded == 0
+    assert result.last_shortcode == "P1"          # nao perdeu os posts

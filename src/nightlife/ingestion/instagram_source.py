@@ -5,11 +5,16 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 _log = logging.getLogger(__name__)
+
+# shortcode vem da rede: sanitiza antes de virar nome de arquivo (evita path
+# traversal tipo "../victim/x"). Shortcodes reais do IG sao [A-Za-z0-9_-]{11}.
+_VALID_SHORTCODE = re.compile(r"[A-Za-z0-9_-]{1,64}")
 
 
 @dataclass
@@ -40,7 +45,7 @@ def parse_profile_posts(graphql: dict) -> list[IgPost]:
         node = edge.get("node") or {}
         shortcode = node.get("shortcode")
         image_url = node.get("display_url")
-        if not shortcode or not image_url:
+        if not shortcode or not image_url or not _VALID_SHORTCODE.fullmatch(shortcode):
             continue
         out.append(IgPost(
             shortcode=shortcode,
@@ -116,8 +121,15 @@ def scrape_handle(
             "taken_at": post.taken_at,
         }, ensure_ascii=False), encoding="utf-8")
         downloaded += 1
-    # cursor novo = o post mais recente visto (posts[0]); se nao havia posts, mantem
-    new_cursor = posts[0].shortcode if posts else last_shortcode
+    # cursor so avanca se TODOS os posts novos baixaram; se algum falhou, mantem o
+    # cursor antigo p/ re-tentar no proximo run (evita perder flyer por falha
+    # transitoria de download). Sem posts novos: marca o topo visto.
+    if not fresh:
+        new_cursor = posts[0].shortcode if posts else last_shortcode
+    elif downloaded == len(fresh):
+        new_cursor = fresh[0].shortcode
+    else:
+        new_cursor = last_shortcode
     return ScrapeResult(handle=handle, last_shortcode=new_cursor, downloaded=downloaded)
 
 

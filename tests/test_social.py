@@ -31,6 +31,17 @@ def test_handle_from_osm_tags_prioriza_instagram():
     assert handle_from_osm_tags({}) is None
 
 
+def test_nao_aceita_dominio_ou_email_como_handle():
+    # website/contact:website com dominio proprio (mesmo sem esquema) NAO vira handle
+    assert handle_from_osm_tags({"website": "cargo.com.br"}) is None
+    assert handle_from_osm_tags({"contact:website": "www.cargo.com.br"}) is None
+    # dominio de e-mail nao e handle (lookbehind na regex de @mencao)
+    assert handles_from_text("fale com booking@gmail.com") == set()
+    # mas o instagram real continua sendo pego
+    assert handle_from_osm_tags({"website": "https://instagram.com/cargoclub"}) == "cargoclub"
+    assert handles_from_text("segue la @mambanegra") == {"mambanegra"}
+
+
 def test_handle_from_jsonld_varre_sameas():
     data = {"@type": "NightClub", "name": "Lab",
             "sameAs": ["https://facebook.com/lab", "https://www.instagram.com/lab.club/"]}
