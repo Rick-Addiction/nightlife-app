@@ -8,3 +8,5 @@ build/
 dist/
 flyers/
 .superpowers/
+.ig_session/
+flyers/
