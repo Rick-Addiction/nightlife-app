@@ -25,33 +25,65 @@ class IgPost:
     taken_at: int | None
 
 
+def _edges(graphql: dict) -> list:
+    """Edges do timeline, tolerante aos DOIS shapes que o IG serve (mid-migracao):
+    moderno `xdt_api__v1__feed__user_timeline_graphql_connection` e o legado
+    `user.edge_owner_to_timeline_media`."""
+    data = graphql.get("data") or {}
+    conn = data.get("xdt_api__v1__feed__user_timeline_graphql_connection")
+    if isinstance(conn, dict):
+        return conn.get("edges") or []
+    user = data.get("user") or {}
+    return (user.get("edge_owner_to_timeline_media") or {}).get("edges") or []
+
+
+def _shortcode_of(node: dict) -> str | None:
+    return node.get("code") or node.get("shortcode")  # moderno: 'code'; legado: 'shortcode'
+
+
+def _image_of(node: dict) -> str | None:
+    iv = node.get("image_versions2")            # moderno: candidates[0] e a maior
+    if isinstance(iv, dict):
+        cands = iv.get("candidates") or []
+        if cands and cands[0].get("url"):
+            return cands[0]["url"]
+    return node.get("display_url")              # legado
+
+
 def _caption_of(node: dict) -> str | None:
-    edges = (node.get("edge_media_to_caption") or {}).get("edges") or []
+    cap = node.get("caption")                   # moderno: caption.text (ou None)
+    if isinstance(cap, dict):
+        return cap.get("text") or None
+    edges = (node.get("edge_media_to_caption") or {}).get("edges") or []  # legado
     if edges:
-        text = (edges[0].get("node") or {}).get("text")
-        return text or None
+        return ((edges[0].get("node") or {}).get("text")) or None
     return None
 
 
+def _taken_at_of(node: dict) -> int | None:
+    return node.get("taken_at") or node.get("taken_at_timestamp")
+
+
 def parse_profile_posts(graphql: dict) -> list[IgPost]:
-    """JSON GraphQL do perfil -> lista de IgPost (mais recentes primeiro).
+    """JSON do perfil -> lista de IgPost (mais recentes primeiro).
 
     Tolerante a formato ausente/None: devolve [] em vez de estourar (o IG muda
-    o shape com frequencia — o fallback e melhor que quebrar o run inteiro)."""
-    user = ((graphql.get("data") or {}).get("user")) or {}
-    edges = ((user.get("edge_owner_to_timeline_media") or {}).get("edges")) or []
+    o shape com frequencia — o fallback e melhor que quebrar o run inteiro).
+    Entende o shape moderno (xdt/v1 feed) e o legado (edge_owner_to_timeline)."""
+    if not isinstance(graphql, dict):
+        return []
     out: list[IgPost] = []
-    for edge in edges:
+    for edge in _edges(graphql):
         node = edge.get("node") or {}
-        shortcode = node.get("shortcode")
-        image_url = node.get("display_url")
+        shortcode = _shortcode_of(node)
+        image_url = _image_of(node)
         if not shortcode or not image_url or not _VALID_SHORTCODE.fullmatch(shortcode):
             continue
         out.append(IgPost(
             shortcode=shortcode,
             image_url=image_url,
             caption=_caption_of(node),
-            taken_at=node.get("taken_at_timestamp"),
+            taken_at=_taken_at_of(node),
         ))
     return out
 

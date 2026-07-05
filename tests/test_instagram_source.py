@@ -25,6 +25,28 @@ def test_parse_profile_posts():
     assert posts[0].taken_at == 1717800000
 
 
+MODERN = {  # shape moderno do IG (xdt/v1 feed), capturado no smoke real
+    "data": {"xdt_api__v1__feed__user_timeline_graphql_connection": {"edges": [
+        {"node": {"code": "CqbDvGMJdwO", "taken_at": 1680200512,
+                  "caption": {"text": "Carioca Club show"},
+                  "image_versions2": {"candidates": [
+                      {"url": "https://cdn/big.jpg", "width": 1080},
+                      {"url": "https://cdn/small.jpg", "width": 480}]}}},
+        {"node": {"code": "Xyz12345678", "taken_at": 1680200000, "caption": None,
+                  "image_versions2": {"candidates": [{"url": "https://cdn/2.jpg"}]}}},
+    ]}}
+}
+
+
+def test_parse_profile_posts_shape_moderno_xdt():
+    posts = parse_profile_posts(MODERN)
+    assert [p.shortcode for p in posts] == ["CqbDvGMJdwO", "Xyz12345678"]
+    assert posts[0].image_url == "https://cdn/big.jpg"   # candidates[0] = a maior
+    assert posts[0].caption == "Carioca Club show"
+    assert posts[1].caption is None                       # caption None no moderno
+    assert posts[0].taken_at == 1680200512
+
+
 def test_new_posts_para_no_cursor():
     posts = parse_profile_posts(GRAPHQL)
     # ja vimos P1 antes: so P3 e P2 sao novos
