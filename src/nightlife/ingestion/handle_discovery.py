@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from ..extraction.jsonld import _iter_jsonld
 from ..extraction.social import (
-    canonical_handle, handle_from_jsonld, handle_from_osm_tags, handles_from_text,
+    canonical_handle, handle_from_jsonld, handle_from_osm_tags, ig_handles_from_urls,
 )
 from ..models import Event, EventSource, Organizer, Venue, VenueSource
 
@@ -31,7 +31,7 @@ def handle_from_html(html: str | None) -> str | None:
         h = handle_from_jsonld(node)
         if h:
             return h
-    found = handles_from_text(html)
+    found = ig_handles_from_urls(html)  # so URLs de IG; @mencoes em HTML sao ruido (CSS/JSON-LD)
     return sorted(found)[0] if found else None
 
 

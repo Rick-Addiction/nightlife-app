@@ -54,6 +54,20 @@ def handles_from_text(text: str | None) -> set[str]:
     return out
 
 
+def ig_handles_from_urls(text: str | None) -> set[str]:
+    """So handles vindos de URLs de instagram.com — IGNORA @mencoes. Em HTML, `@`
+    quase sempre e CSS at-rule (@media/@font-face) ou JSON-LD (@context), nao um
+    handle; um site que linka seu IG usa a URL. Usado pelo fallback de pagina."""
+    if not text:
+        return set()
+    out: set[str] = set()
+    for m in _IG_URL.finditer(text):
+        h = canonical_handle(m.group(1))
+        if h:
+            out.add(h)
+    return out
+
+
 def _handle_if_ig_url(value: str | None) -> str | None:
     """Handle so se `value` for uma URL de instagram.com — nao um dominio proprio.
 

@@ -20,6 +20,17 @@ def test_handle_from_html_none_quando_nao_ha_ig():
     assert handle_from_html("") is None
 
 
+def test_handle_from_html_ignora_ruido_de_at_rules_e_jsonld():
+    # @context (JSON-LD) e @font-face/@media (CSS) NAO podem virar handle
+    html = """<html><head>
+      <style>@font-face { font-family: X; } @media (max-width: 5px) {}</style>
+      <script type="application/ld+json">{"@context":"https://schema.org","name":"Bar"}</script>
+      </head><body>segue @font e @context la</body></html>"""
+    assert handle_from_html(html) is None
+    # mas se houver uma URL de IG de verdade, pega
+    assert handle_from_html(html.replace("</body>", '<a href="https://instagram.com/barreal">ig</a></body>')) == "barreal"
+
+
 from nightlife.ingestion.handle_discovery import discover_venue_handles
 from nightlife.ingestion.osm_source import parse_overpass_tags
 from nightlife.models import Venue, VenueSource
