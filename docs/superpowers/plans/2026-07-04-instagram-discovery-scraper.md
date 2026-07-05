@@ -251,7 +251,7 @@ def canonical_handle(raw: str | None) -> str | None:
     if m:
         s = m.group(1)
     s = s.lstrip("@").strip().strip("/").lower()
-    s = s.split("?")[0].split("/")[0]
+    s = s.split("?")[0].split("/")[0].strip(".")  # tira ponto de borda (ex.: "@vhoor." no fim da frase)
     if not s or s in _NON_PROFILE:
         return None
     if not _VALID.fullmatch(s):
