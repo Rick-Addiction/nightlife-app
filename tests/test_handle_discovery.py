@@ -18,3 +18,66 @@ def test_handle_from_html_cai_pra_texto_quando_sem_jsonld():
 def test_handle_from_html_none_quando_nao_ha_ig():
     assert handle_from_html("<html><body>sem redes</body></html>") is None
     assert handle_from_html("") is None
+
+
+from nightlife.ingestion.handle_discovery import discover_venue_handles
+from nightlife.ingestion.osm_source import parse_overpass_tags
+from nightlife.models import Venue, VenueSource
+
+OSM_URL = "https://www.openstreetmap.org/node/1"
+
+
+def _osm_venue(session, name):
+    v = Venue(name=name)
+    session.add(v)
+    session.flush()
+    session.add(VenueSource(venue_id=v.id, source_type="osm", source_url=OSM_URL))
+    session.flush()
+    return v
+
+
+def test_parse_overpass_tags_mapeia_por_url():
+    data = {"elements": [
+        {"type": "node", "id": 1, "tags": {"name": "Lab", "contact:instagram": "@lab"}},
+        {"type": "way", "id": 2, "tags": {"name": "Cargo"}},
+    ]}
+    out = parse_overpass_tags(data)
+    assert out["https://www.openstreetmap.org/node/1"]["contact:instagram"] == "@lab"
+    assert out["https://www.openstreetmap.org/way/2"] == {"name": "Cargo"}
+
+
+def test_discover_venue_via_osm_tag(session):
+    v = _osm_venue(session, "Lab Club")
+    tags = {OSM_URL: {"contact:instagram": "@labclub"}}
+
+    def fetch(url):
+        raise AssertionError("fetch nao deveria ser chamado")
+
+    n = discover_venue_handles(session, osm_tags_by_url=tags, fetch=fetch)
+    session.flush()
+    assert n == 1
+    assert v.instagram == "labclub"
+
+
+def test_discover_venue_via_site_fetch(session):
+    v = _osm_venue(session, "Cargo")
+    tags = {OSM_URL: {"website": "https://cargo.com.br"}}
+
+    def fetch(url):
+        assert url == "https://cargo.com.br"
+        return '<html><body><a href="https://instagram.com/cargoclub">ig</a></body></html>'
+
+    n = discover_venue_handles(session, osm_tags_by_url=tags, fetch=fetch)
+    session.flush()
+    assert n == 1
+    assert v.instagram == "cargoclub"
+    assert v.website == "https://cargo.com.br"
+
+
+def test_discover_venue_idempotente(session):
+    v = Venue(name="Ja Tem", instagram="jatem")
+    session.add(v)
+    session.flush()
+    n = discover_venue_handles(session, osm_tags_by_url={}, fetch=lambda u: None)
+    assert n == 0
+    assert v.instagram == "jatem"  # nao sobrescreve

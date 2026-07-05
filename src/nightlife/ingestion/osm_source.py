@@ -84,3 +84,13 @@ class OSMSource:
 
     def events(self) -> list[RawEvent]:
         return []
+
+
+def parse_overpass_tags(data: dict) -> dict[str, dict]:
+    """Mapeia source_url do OSM -> tags do elemento. A descoberta de handles usa
+    isto porque as tags nao sao persistidas na evidencia (so o hash do payload)."""
+    out: dict[str, dict] = {}
+    for el in data.get("elements", []):
+        url = f"https://www.openstreetmap.org/{el.get('type')}/{el.get('id')}"
+        out[url] = el.get("tags") or {}
+    return out
