@@ -125,3 +125,39 @@ def test_discover_organizer_idempotente(session):
     session.flush()
     n = discover_organizer_handles(session, fetch=lambda u: None)
     assert n == 0
+
+
+def test_discover_venue_pula_buffet(session):
+    v = _osm_venue(session, "Buffet Planeta 1")
+    tags = {OSM_URL: {"contact:instagram": "@buffetplaneta"}}
+    n = discover_venue_handles(session, osm_tags_by_url=tags, fetch=lambda u: None)
+    session.flush()
+    assert n == 0
+    assert v.instagram is None            # buffet nem e considerado
+
+
+def test_discover_venue_descarta_platform_handle(session):
+    v = _osm_venue(session, "Casa X")
+    tags = {OSM_URL: {"contact:instagram": "@sympla"}}
+    n = discover_venue_handles(session, osm_tags_by_url=tags, fetch=lambda u: None)
+    session.flush()
+    assert n == 0
+    assert v.instagram is None            # sympla e handle de plataforma
+
+
+def test_discover_organizer_descarta_platform_handle(session):
+    org = Organizer(name="Org Y")
+    session.add(org)
+    session.flush()
+    ev = Event(name="E", organizer_id=org.id)
+    session.add(ev)
+    session.flush()
+    session.add(EventSource(event_id=ev.id, source_type="ticketing",
+                            source_url="https://sympla.com.br/evento/y/9"))
+    session.flush()
+    n = discover_organizer_handles(
+        session,
+        fetch=lambda u: '<a href="https://instagram.com/sympla">x</a>')
+    session.flush()
+    assert n == 0
+    assert org.instagram is None

@@ -12,6 +12,7 @@ from typing import Callable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..domain.nightlife_relevance import is_buffet_name, is_platform_handle
 from ..extraction.jsonld import _iter_jsonld
 from ..extraction.social import (
     canonical_handle, handle_from_jsonld, handle_from_osm_tags, ig_handles_from_urls,
@@ -55,6 +56,8 @@ def discover_venue_handles(
     count = 0
     venues = session.scalars(select(Venue).where(Venue.instagram.is_(None))).all()
     for v in venues:
+        if is_buffet_name(v.name):
+            continue                                  # buffet: nem descobre nem fetch
         url = _osm_source_url(session, v.id)
         tags = osm_tags_by_url.get(url, {}) if url else {}
         handle = handle_from_osm_tags(tags)
@@ -66,7 +69,7 @@ def discover_venue_handles(
                 handle = handle_from_html(fetch(website))
             except Exception as exc:  # noqa: BLE001 — fetch best-effort, nao fatal
                 _log.warning("fetch de %s falhou: %s", website, exc)
-        if handle:
+        if handle and not is_platform_handle(handle):
             v.instagram = handle
             count += 1
     return count
@@ -90,7 +93,7 @@ def discover_organizer_handles(session: Session, *, fetch: Fetcher) -> int:
         except Exception as exc:  # noqa: BLE001 — best-effort
             _log.warning("fetch de %s falhou: %s", src.source_url, exc)
             continue
-        if handle:
+        if handle and not is_platform_handle(handle):
             org.instagram = handle
             count += 1
     return count
