@@ -11,3 +11,15 @@ TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
     "postgresql+psycopg://nightlife:nightlife@localhost:5434/nightlife_test?sslmode=disable&gssencmode=disable",
 )
+
+from pathlib import Path
+
+# Instagram scraper (spec §8) — defaults conservadores
+IG_USER_DATA_DIR = Path(os.environ.get("IG_USER_DATA_DIR", ".ig_session"))
+IG_HEADFUL = os.environ.get("IG_HEADFUL", "1") != "0"
+IG_MAX_PROFILES_PER_RUN = int(os.environ.get("IG_MAX_PROFILES_PER_RUN", "8"))
+IG_MAX_POSTS_FIRST_SWEEP = int(os.environ.get("IG_MAX_POSTS_FIRST_SWEEP", "6"))
+IG_MAX_POSTS_INCREMENTAL = int(os.environ.get("IG_MAX_POSTS_INCREMENTAL", "12"))
+IG_DELAY_MIN = float(os.environ.get("IG_DELAY_MIN", "4"))
+IG_DELAY_MAX = float(os.environ.get("IG_DELAY_MAX", "11"))
+IG_FAILURE_PAUSE_THRESHOLD = int(os.environ.get("IG_FAILURE_PAUSE_THRESHOLD", "3"))

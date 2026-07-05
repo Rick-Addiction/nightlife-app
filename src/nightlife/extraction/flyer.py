@@ -35,11 +35,12 @@ class FlyerExtraction(BaseModel):
 
 
 class FlyerExtractor(Protocol):
-    def extract(self, image_path: Path) -> FlyerExtraction | None: ...
+    def extract(self, image_path: Path, *, caption: str | None = None) -> FlyerExtraction | None: ...
 
 
 def flyer_to_raw_event(
-    extraction: FlyerExtraction, image_hash: str, *, reference: date
+    extraction: FlyerExtraction, image_hash: str, *, reference: date,
+    permalink: str | None = None,
 ) -> RawEvent | None:
     """Extracao validada -> RawEvent. Pura. Descarta se nao ha nome de evento."""
     if not extraction.event_name:
@@ -71,6 +72,6 @@ def flyer_to_raw_event(
         organizer_name=organizer,
         lineup_text=", ".join(extraction.lineup) or None,
         ticket_url=ticket,
-        source_url=f"flyer:{image_hash}",
+        source_url=permalink or f"flyer:{image_hash}",
         raw_payload=extraction.model_dump_json(),
     )

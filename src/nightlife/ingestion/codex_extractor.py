@@ -94,8 +94,12 @@ class CodexExtractor:
         self._runner = runner or _run_codex
         self._retries = retries
 
-    def extract(self, image_path: Path) -> FlyerExtraction | None:
-        prompt = _PROMPT
+    def extract(self, image_path: Path, *, caption: str | None = None) -> FlyerExtraction | None:
+        base = _PROMPT
+        if caption:
+            base = (_PROMPT + "\n\nDICA — a legenda do post que acompanha o flyer diz "
+                    f"(use como apoio, mas a IMAGEM manda; nao invente):\n{caption}")
+        prompt = base
         for attempt in range(self._retries + 1):
             try:
                 output = self._runner(image_path, prompt)
@@ -105,6 +109,6 @@ class CodexExtractor:
                     subprocess.SubprocessError, OSError) as exc:
                 _log.warning("extracao de %s falhou (tentativa %d): %s",
                              image_path, attempt + 1, exc)
-                prompt = (_PROMPT + "\n\nATENCAO: sua resposta anterior foi invalida "
+                prompt = (base + "\n\nATENCAO: sua resposta anterior foi invalida "
                           f"({exc}). Responda APENAS com o objeto JSON.")
         return None
