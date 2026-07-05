@@ -19,6 +19,8 @@ class Venue(Base):
     lat: Mapped[float | None] = mapped_column(Float, default=None)
     lng: Mapped[float | None] = mapped_column(Float, default=None)
     address: Mapped[str | None] = mapped_column(String(500), default=None)
+    instagram: Mapped[str | None] = mapped_column(String(200), default=None)
+    website: Mapped[str | None] = mapped_column(String(500), default=None)
     status: Mapped[str] = mapped_column(String(30), default="unverified")
     confidence: Mapped[int] = mapped_column(Integer, default=0)
     is_monitored: Mapped[bool] = mapped_column(default=False)
@@ -120,3 +122,12 @@ class VerificationLog(Base):
     entity_id: Mapped[int] = mapped_column(Integer)
     note: Mapped[str | None] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class IgProfileState(Base):
+    __tablename__ = "ig_profile_states"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    handle: Mapped[str] = mapped_column(String(200), unique=True)
+    last_shortcode: Mapped[str | None] = mapped_column(String(50), default=None)
+    last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)

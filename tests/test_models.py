@@ -53,3 +53,19 @@ def test_ingestion_run_row(session):
     session.flush()
     assert run.id is not None
     assert run.records_found == 3
+
+
+def test_venue_has_social_fields_and_ig_state(session):
+    from nightlife.models import Venue, IgProfileState
+
+    v = Venue(name="Lab Club", instagram="labclub", website="https://labclub.com.br")
+    session.add(v)
+    session.flush()
+    assert v.instagram == "labclub"
+    assert v.website == "https://labclub.com.br"
+
+    st = IgProfileState(handle="labclub")
+    session.add(st)
+    session.flush()
+    assert st.consecutive_failures == 0
+    assert st.last_shortcode is None
