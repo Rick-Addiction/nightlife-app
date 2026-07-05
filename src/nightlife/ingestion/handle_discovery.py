@@ -16,7 +16,7 @@ from ..extraction.jsonld import _iter_jsonld
 from ..extraction.social import (
     canonical_handle, handle_from_jsonld, handle_from_osm_tags, handles_from_text,
 )
-from ..models import Venue, VenueSource
+from ..models import Event, EventSource, Organizer, Venue, VenueSource
 
 _log = logging.getLogger(__name__)
 
@@ -68,5 +68,29 @@ def discover_venue_handles(
                 _log.warning("fetch de %s falhou: %s", website, exc)
         if handle:
             v.instagram = handle
+            count += 1
+    return count
+
+
+def discover_organizer_handles(session: Session, *, fetch: Fetcher) -> int:
+    """Popula organizer.instagram via a pagina de detalhe da Sympla (source_url
+    de um EventSource do organizer). Idempotente. Retorna quantos novos."""
+    count = 0
+    orgs = session.scalars(select(Organizer).where(Organizer.instagram.is_(None))).all()
+    for org in orgs:
+        src = session.scalars(
+            select(EventSource)
+            .join(Event, EventSource.event_id == Event.id)
+            .where(Event.organizer_id == org.id, EventSource.source_url.is_not(None))
+        ).first()
+        if src is None or not src.source_url:
+            continue
+        try:
+            handle = handle_from_html(fetch(src.source_url))
+        except Exception as exc:  # noqa: BLE001 — best-effort
+            _log.warning("fetch de %s falhou: %s", src.source_url, exc)
+            continue
+        if handle:
+            org.instagram = handle
             count += 1
     return count

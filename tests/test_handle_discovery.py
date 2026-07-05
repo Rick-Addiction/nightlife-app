@@ -81,3 +81,36 @@ def test_discover_venue_idempotente(session):
     n = discover_venue_handles(session, osm_tags_by_url={}, fetch=lambda u: None)
     assert n == 0
     assert v.instagram == "jatem"  # nao sobrescreve
+
+
+from nightlife.ingestion.handle_discovery import discover_organizer_handles
+from nightlife.models import Event, EventSource, Organizer
+
+
+def test_discover_organizer_via_sympla_page(session):
+    org = Organizer(name="Mamba Negra")
+    session.add(org)
+    session.flush()
+    ev = Event(name="Mamba", organizer_id=org.id)
+    session.add(ev)
+    session.flush()
+    session.add(EventSource(event_id=ev.id, source_type="ticketing",
+                            source_url="https://sympla.com.br/evento/mamba/123"))
+    session.flush()
+
+    def fetch(url):
+        assert "sympla" in url
+        return '<html><body><a href="https://instagram.com/mambanegra">ig</a></body></html>'
+
+    n = discover_organizer_handles(session, fetch=fetch)
+    session.flush()
+    assert n == 1
+    assert org.instagram == "mambanegra"
+
+
+def test_discover_organizer_idempotente(session):
+    org = Organizer(name="Ja", instagram="ja")
+    session.add(org)
+    session.flush()
+    n = discover_organizer_handles(session, fetch=lambda u: None)
+    assert n == 0
