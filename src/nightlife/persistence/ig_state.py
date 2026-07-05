@@ -7,18 +7,29 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import IgProfileState, Organizer, Venue
+from ..domain.nightlife_relevance import is_platform_handle, venue_relevance
+from ..models import Event, IgProfileState, Organizer, Venue
 
 
 def handles_to_scrape(session: Session, *, pause_threshold: int = 3) -> list[str]:
-    """Uniao distinta e ordenada de venue.instagram e organizer.instagram,
-    menos os handles pausados (falhas consecutivas >= pause_threshold)."""
-    vs = session.scalars(select(Venue.instagram).where(Venue.instagram.is_not(None))).all()
-    os_ = session.scalars(select(Organizer.instagram).where(Organizer.instagram.is_not(None))).all()
+    """Handles a varrer: handles de venues RELEVANT (nightclub/com-evento/monitorado)
+    uniao com os de organizers, menos platform-handles e menos os pausados."""
+    venues = session.scalars(select(Venue).where(Venue.instagram.is_not(None))).all()
+    with_events = set(session.scalars(
+        select(Event.venue_id).where(Event.venue_id.is_not(None))
+    ).all())
+    vhandles = {
+        v.instagram for v in venues
+        if venue_relevance(v.name, v.category, v.id in with_events, v.is_monitored) == "relevant"
+    }
+    ohandles = set(session.scalars(
+        select(Organizer.instagram).where(Organizer.instagram.is_not(None))
+    ).all())
+    handles = {h for h in (vhandles | ohandles) if h and not is_platform_handle(h)}
     paused = set(session.scalars(
         select(IgProfileState.handle).where(IgProfileState.consecutive_failures >= pause_threshold)
     ).all())
-    return sorted({*vs, *os_} - paused)
+    return sorted(handles - paused)
 
 
 def get_or_create_state(session: Session, handle: str) -> IgProfileState:
