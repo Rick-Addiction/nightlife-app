@@ -39,3 +39,55 @@ def test_new_posts_respeita_cap():
 def test_parse_profile_posts_vazio():
     assert parse_profile_posts({}) == []
     assert parse_profile_posts({"data": {"user": None}}) == []
+
+
+import json
+from nightlife.ingestion.instagram_source import scrape_handle, ScrapeConfig
+
+
+def test_scrape_handle_grava_imagem_e_sidecar(tmp_path):
+    posts = [IgPost("P3", "https://cdn/p3.jpg", "Sabado @deusa", 1717800000),
+             IgPost("P2", "https://cdn/p2.jpg", None, 1717700000)]
+
+    def fetch_posts(handle):
+        assert handle == "mambanegra"
+        return posts
+
+    downloaded = []
+
+    def download(post, dest):  # simula baixar a imagem pro caminho dest
+        dest.write_bytes(b"fakejpg")
+        downloaded.append(post.shortcode)
+        return dest
+
+    cfg = ScrapeConfig(inbox=tmp_path, cap=10)
+    result = scrape_handle("mambanegra", last_shortcode=None,
+                           fetch_posts=fetch_posts, download=download, config=cfg)
+
+    assert result.last_shortcode == "P3"      # mais recente vira o novo cursor
+    assert downloaded == ["P3", "P2"]
+    sidecar = json.loads((tmp_path / "P3.json").read_text(encoding="utf-8"))
+    assert sidecar["handle"] == "mambanegra"
+    assert sidecar["permalink"] == "https://www.instagram.com/p/P3/"
+    assert sidecar["caption"] == "Sabado @deusa"
+    assert (tmp_path / "P3.jpg").exists()
+
+
+def test_scrape_handle_incremental_para_no_cursor(tmp_path):
+    posts = [IgPost("P3", "u3", None, 3), IgPost("P2", "u2", None, 2), IgPost("P1", "u1", None, 1)]
+    cfg = ScrapeConfig(inbox=tmp_path, cap=10)
+    result = scrape_handle("h", last_shortcode="P2",
+                           fetch_posts=lambda h: posts,
+                           download=lambda p, d: d.write_bytes(b"x") or d, config=cfg)
+    assert result.last_shortcode == "P3"          # so P3 e novo
+    assert (tmp_path / "P3.jpg").exists()
+    assert not (tmp_path / "P2.jpg").exists()
+
+
+def test_scrape_handle_sem_posts_novos_mantem_cursor(tmp_path):
+    cfg = ScrapeConfig(inbox=tmp_path, cap=10)
+    result = scrape_handle("h", last_shortcode="P9",
+                           fetch_posts=lambda h: [IgPost("P9", "u", None, 1)],
+                           download=lambda p, d: d, config=cfg)
+    assert result.last_shortcode == "P9"          # nada novo: cursor inalterado
+    assert result.downloaded == 0
