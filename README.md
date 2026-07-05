@@ -92,6 +92,8 @@ Testes da UI: `cd web && npm run test`.
 
 Requer Playwright: `.venv/Scripts/python -m pip install playwright && .venv/Scripts/python -m playwright install chromium`.
 
+> Se o download do chromium falhar com `UNABLE_TO_VERIFY_LEAF_SIGNATURE` (Avast intercepta o TLS nesta máquina), rode o install com `NODE_TLS_REJECT_UNAUTHORIZED=0` só nesse comando — não persista a variável no ambiente.
+
 ```bash
 # 1. Descobrir os @handles dos venues/organizers (tags OSM + sites + Sympla)
 .venv/Scripts/python -m nightlife.discover_handles
