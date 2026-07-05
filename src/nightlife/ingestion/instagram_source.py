@@ -134,11 +134,16 @@ def scrape_handle(
 
 
 def open_context(user_data_dir: Path, *, headful: bool):
-    """Abre um persistent context do chromium com a sessao da burner."""
+    """Abre um persistent context do chromium com a sessao da burner.
+
+    ignore_https_errors: nesta maquina o Avast intercepta o TLS e re-assina com CA
+    propria; o context.request (Node, usado p/ baixar a imagem do fbcdn) nao confia
+    nela e falha com 'unable to verify the first certificate'. Aceito porque o
+    'MITM' e o proprio antivirus local — mesma logica do truststore no lado Python."""
     from playwright.sync_api import sync_playwright  # lazy: so quando de fato scrapeia
     pw = sync_playwright().start()
     context = pw.chromium.launch_persistent_context(
-        str(user_data_dir), headless=not headful,
+        str(user_data_dir), headless=not headful, ignore_https_errors=True,
     )
     return pw, context
 
