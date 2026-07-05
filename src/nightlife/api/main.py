@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..domain.freshness import freshness_factor
+from ..domain.nightlife_relevance import is_buffet_name, venue_relevance
 from ..models import Event, Venue
 from .deps import get_session
 from .schemas import EventOut, VenueOut
@@ -34,6 +35,7 @@ def list_venues(
     type: str | None = None,
     bbox: str | None = None,
     min_confidence: int = 0,
+    include_all: bool = False,
     session: Session = Depends(get_session),
 ):
     # pre-filtro no SQL pelo score armazenado e valido: effective <= stored
@@ -46,8 +48,17 @@ def list_venues(
             Venue.lat >= min_lat, Venue.lat <= max_lat,
             Venue.lng >= min_lng, Venue.lng <= max_lng,
         )
+    venues = session.scalars(q).all()
+    if not include_all:
+        with_events = set(session.scalars(
+            select(Event.venue_id).where(Event.venue_id.is_not(None))
+        ).all())
+        venues = [
+            v for v in venues
+            if venue_relevance(v.name, v.category, v.id in with_events, v.is_monitored) == "relevant"
+        ]
     now = datetime.now(timezone.utc)
-    outs = [_with_effective(VenueOut, v, now) for v in session.scalars(q).all()]
+    outs = [_with_effective(VenueOut, v, now) for v in venues]
     outs = [o for o in outs if o.effective_confidence >= min_confidence]
     outs.sort(key=lambda o: o.effective_confidence, reverse=True)
     return outs
@@ -69,6 +80,7 @@ def list_events(
     genre: str | None = None,
     min_confidence: int = 0,
     include_past: bool = False,
+    include_all: bool = False,
     session: Session = Depends(get_session),
 ):
     if date_from is None and not include_past:
@@ -90,7 +102,15 @@ def list_events(
     now = datetime.now(timezone.utc)
     outs = [_with_effective(EventOut, e, now)
             for e in session.scalars(q.order_by(Event.starts_at)).all()]
-    return [o for o in outs if o.effective_confidence >= min_confidence]
+    outs = [o for o in outs if o.effective_confidence >= min_confidence]
+    if not include_all:
+        # projeta (id, name) em vez de hidratar Venue inteiro por request
+        blocked_ids = {
+            vid for vid, vname in session.execute(select(Venue.id, Venue.name)).all()
+            if is_buffet_name(vname)
+        }
+        outs = [o for o in outs if o.venue_id not in blocked_ids]
+    return outs
 
 
 @app.get("/events/{event_id}", response_model=EventOut)

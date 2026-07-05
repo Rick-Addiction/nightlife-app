@@ -123,8 +123,8 @@ def test_effective_confidence_decays_with_staleness(session):
 
 
 def test_venues_sorted_by_effective_confidence_desc(session):
-    a = Venue(name="Fraco", status="operational", confidence=30)
-    b = Venue(name="Forte", status="operational", confidence=80)
+    a = Venue(name="Fraco", status="operational", confidence=30, category="nightclub")
+    b = Venue(name="Forte", status="operational", confidence=80, category="nightclub")
     session.add_all([a, b])
     session.flush()
     client = _client(session)
@@ -151,5 +151,42 @@ def test_events_default_hides_past(session):
         assert "Amanha" in names and "Ontem" not in names  # default: so futuro
         names2 = [x["name"] for x in client.get("/events", params={"include_past": "true"}).json()]
         assert "Ontem" in names2
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_venues_esconde_dormant_e_buffet_por_padrao(session):
+    session.add_all([
+        Venue(name="Club Real", category="nightclub", status="operational", confidence=60),
+        Venue(name="Espaco Dormente", category="events_venue", status="operational", confidence=60),
+        Venue(name="Buffet Kids", category="events_venue", status="operational", confidence=60),
+    ])
+    session.flush()
+    client = _client(session)
+    try:
+        names = [x["name"] for x in client.get("/venues").json()]
+        assert names == ["Club Real"]                       # dormant e buffet escondidos
+        all_names = [x["name"] for x in client.get("/venues", params={"include_all": "true"}).json()]
+        assert set(all_names) == {"Club Real", "Espaco Dormente", "Buffet Kids"}
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_events_esconde_evento_de_venue_buffet(session):
+    from datetime import datetime as _dt
+    buf = Venue(name="Buffet Festas", status="operational", confidence=60)
+    club = Venue(name="Club Z", category="nightclub", status="operational", confidence=60)
+    session.add_all([buf, club]); session.flush()
+    e_buf = Event(name="Aniversario", starts_at=_dt(2099, 6, 1, 22, tzinfo=SP),
+                  venue_id=buf.id, status="scheduled", confidence=60)
+    e_club = Event(name="Rave", starts_at=_dt(2099, 6, 1, 23, tzinfo=SP),
+                   venue_id=club.id, status="scheduled", confidence=60)
+    session.add_all([e_buf, e_club]); session.flush()
+    client = _client(session)
+    try:
+        names = [x["name"] for x in client.get("/events").json()]
+        assert "Rave" in names and "Aniversario" not in names   # evento de buffet escondido
+        all_names = [x["name"] for x in client.get("/events", params={"include_all": "true"}).json()]
+        assert "Aniversario" in all_names
     finally:
         app.dependency_overrides.clear()

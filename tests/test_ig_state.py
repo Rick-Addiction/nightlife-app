@@ -1,23 +1,34 @@
-from nightlife.models import IgProfileState, Organizer, Venue
+from nightlife.models import Event, IgProfileState, Organizer, Venue
 from nightlife.persistence.ig_state import (
     handles_to_scrape, get_or_create_state, record_success, record_failure,
 )
 
 
-def test_handles_to_scrape_uniao_venue_organizer(session):
+def test_handles_to_scrape_so_venues_relevant(session):
     session.add_all([
-        Venue(name="A", instagram="a"),
-        Venue(name="B", instagram="b"),
-        Venue(name="Sem IG"),
-        Organizer(name="C", instagram="c"),
-        Organizer(name="Dup", instagram="a"),  # duplicado com o venue A
+        Venue(name="Club A", instagram="a", category="nightclub"),        # relevant
+        Venue(name="Espaco B", instagram="b", is_monitored=True),         # relevant (monitorado)
+        Venue(name="Dormente D", instagram="d", category="events_venue"), # dormant -> fora
+        Venue(name="Buffet E", instagram="e", category="events_venue"),   # blocked -> fora
+        Organizer(name="C", instagram="c"),                               # organizer entra
+        Organizer(name="Plataforma", instagram="sympla"),                 # platform -> fora
     ])
     session.flush()
     assert handles_to_scrape(session) == ["a", "b", "c"]
 
 
+def test_handles_to_scrape_venue_com_evento_vira_relevant(session):
+    v = Venue(name="Espaco F", instagram="f", category="events_venue")    # sem evento = dormant
+    session.add(v)
+    session.flush()
+    assert handles_to_scrape(session) == []
+    session.add(Event(name="Festa", venue_id=v.id, status="scheduled"))   # agora tem evento
+    session.flush()
+    assert handles_to_scrape(session) == ["f"]                            # promovido a relevant
+
+
 def test_handles_to_scrape_ignora_pausados(session):
-    session.add(Venue(name="A", instagram="a"))
+    session.add(Venue(name="A", instagram="a", category="nightclub"))     # relevant
     session.add(IgProfileState(handle="a", consecutive_failures=3))
     session.flush()
     assert handles_to_scrape(session, pause_threshold=3) == []
