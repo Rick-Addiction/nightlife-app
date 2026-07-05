@@ -104,7 +104,11 @@ def list_events(
             for e in session.scalars(q.order_by(Event.starts_at)).all()]
     outs = [o for o in outs if o.effective_confidence >= min_confidence]
     if not include_all:
-        blocked_ids = {v.id for v in session.scalars(select(Venue)).all() if is_buffet_name(v.name)}
+        # projeta (id, name) em vez de hidratar Venue inteiro por request
+        blocked_ids = {
+            vid for vid, vname in session.execute(select(Venue.id, Venue.name)).all()
+            if is_buffet_name(vname)
+        }
         outs = [o for o in outs if o.venue_id not in blocked_ids]
     return outs
 
