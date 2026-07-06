@@ -30,6 +30,23 @@ def test_run_daily_isola_falha():
     assert [r.ok for r in results] == [True, False, True]
 
 
+def test_run_daily_executor_que_levanta_nao_aborta():
+    # se o executor LEVANTA (nao so retorna ok=False), o best-effort ainda segue
+    calls = []
+
+    def boom(name, argv):
+        calls.append(name)
+        if name == "b":
+            raise RuntimeError("crash inesperado")
+        return StepResult(name=name, ok=True)
+
+    results = run_daily([("a", ["x"]), ("b", ["y"]), ("c", ["z"])],
+                        run=boom, log=lambda m: None)
+    assert calls == ["a", "b", "c"]                  # c roda apesar do crash em b
+    assert [r.ok for r in results] == [True, False, True]
+    assert "erro inesperado" in results[1].output
+
+
 def test_run_daily_loga_por_passo():
     logs = []
     run_daily([("a", ["x"])], run=lambda n, a: StepResult(n, True), log=logs.append)

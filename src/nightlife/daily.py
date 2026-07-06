@@ -33,7 +33,10 @@ def run_daily(steps: "list[tuple[str, list[str]]]", *, run: Runner, log: Logger)
     results: list[StepResult] = []
     for name, argv in steps:
         log(f"iniciando {name}")
-        result = run(name, argv)
+        try:
+            result = run(name, argv)
+        except Exception as exc:  # noqa: BLE001 — best-effort nao pode ser quebrado pelo executor
+            result = StepResult(name=name, ok=False, output=f"erro inesperado: {exc}")
         log(f"{name}: {'ok' if result.ok else 'FALHA'}")
         results.append(result)
     return results
