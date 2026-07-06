@@ -8,15 +8,15 @@
 
 ## 1. Objetivo
 
-Uma fonte de ingestão `RASource` que consome a API GraphQL do Resident Advisor e traz os **eventos futuros de SP** (com o **venue embutido, já geocodado**) para o banco, via o pipeline de ingestão que já existe. Enche o mapa/lista com a programação real dos clubes.
+Uma fonte de ingestão `RASource` que consome a API GraphQL do Resident Advisor e traz os **eventos futuros de SP** (com o **venue embutido: nome + endereço**, sem geo — RA dá 0,0) para o banco, via o pipeline de ingestão que já existe. Enche a **lista** com a programação real dos clubes; o **mapa** ganha os venues que casam com o OSM (geo emprestado) e o resto quando o Google Places (próximo sub-projeto) geocodar os endereços.
 
 ## 2. Feasibilidade verificada (2026-07-06)
 
 - `POST https://ra.co/graphql` responde **200 via httpx puro** (sem browser). As páginas HTML do RA são bloqueadas por Cloudflare (JS challenge), mas **o endpoint GraphQL não** — dá pra consumir como o Sympla.
 - **Introspection ligada.** Campos de `Query` incluem `areas`, `area`, `eventListings`, `event`, `events`, `venue`, `venues`.
-- **`Venue`** tem: `name`, `location` (geo), `address`, `website`, `capacity`, `photo`, `contentUrl`, `area`, `topArtists`, `events`. → **venues do RA já vêm com lat/lng** (não dependem do Google Places).
-- **`Event`** tem: `title`, `date`, `startTime`/`endTime`, `cost`, `venue`, `area`, `artists`, `lineup`, `genres`, `flyerFront`, `contentUrl`, `isFestival`.
-- **`Area`** tem: `id`, `name`, `urlName`, `eventsCount`, `venuesCount` → SP resolvível por `urlName="saopaulo"`.
+- **`Venue`** tem: `name`, `address`, `website`, `tba`, `isClosed`, `location`, `area`, ... **PORÉM** `location` volta **`{latitude:0, longitude:0}`** para os venues de SP (verificado no `eventListings` E no `venue(id)`) → **RA NÃO expõe geo utilizável**; o que é confiável é o **`address`** (ex.: "Rua Cardeal Arcoverde, 1479") + `website`. Alguns venues são **TBA** (nome = o endereço, `address: null`, flag `tba`).
+- **`Event`** tem: `title`, `date`, `startTime`, `cost`, `venue`, `area`, `artists{name}`, `genres{name}`, `flyerFront`, `contentUrl` (ex.: `/events/2482976`). O `eventListings` já traz o venue embutido com `name`+`address`+`contentUrl` — **não precisa de query por-venue**.
+- **`Area`**: `area(areaUrlName:"saopaulo", countryUrlCode:"br")` → **SP = id `400`** (74 eventos no probe). RA cobre inclusive **Baile Funk** (não é só eletrônica).
 
 ## 3. Decisões travadas (do brainstorming)
 
@@ -38,15 +38,16 @@ Mesma forma das fontes existentes (`Source` protocol: `venues()`/`event_pages()`
 
 **`parse_ra_events` (puro, testável offline):** para cada evento, monta `RawEvent`:
 - `name` = `title`; `starts_at` = parse de `date`/`startTime` (tz-aware); descarta sem `title` ou passado (dia SP).
-- `venue` = `RawVenue(name, lat/lng do location, address, website, category="nightclub", source_type="ra", source_url=contentUrl)`. Venue sem `location` utilizável → venue sem geo (entra na lista, sem pin; geo pode vir do Places depois).
+- `venue` = `RawVenue(name, lat=None, lng=None, address, category="nightclub", source_type="ra", source_url="https://ra.co"+venue.contentUrl)`. **Sem geo** (RA dá 0,0 → tratamos como ausente); o `address` é guardado. Venue **TBA** (contentUrl nulo / nome-é-endereço): ancora só pelo nome, sem criar lixo.
 - `lineup_text` = join de `lineup`/`artists`; `genre` = 1º de `genres` (ou None); `ticket_url`/`source_url` = `contentUrl` (URL do evento no RA); `source_type="ra"`.
 - `raw_payload` = JSON do registro (sort_keys, pra hash estável = idempotência da evidência).
 
 ## 5. O que desbloqueia (via pipeline existente, de graça)
 
-- **Venues geocodados → pins no mapa** na hora (D-Edge, Love Story etc.).
-- **Dedup multi-fonte:** venue do RA casa com o do OSM/Sympla (matching por nome/geo já existe) → preenche lacunas + **multi-fonte soma confiança** (+20).
-- **Relevância:** venue do RA vem com evento → `has_events` → `relevant` (aparece no mapa/scraper).
+- **Eventos reais de SP na lista** — o grande ganho: 74 eventos com data/line-up/gênero/venue, incluindo clubes que o OSM não tem.
+- **Dedup multi-fonte + geo emprestado:** venue do RA casa com o do OSM (matching por nome já existe) → herda o **geo do OSM** (aí pina no mapa) e **soma confiança** (+20 multi-fonte). Venue do RA que NÃO casa (ex.: Fugaz Bar) fica sem geo → só na lista até ser geocodado.
+- **Geo do resto vem do próximo sub-projeto (Google Places):** geocoda o `address` do RA → o Places agora tem um papel claro e necessário (RA dá endereço, não coordenada).
+- **Relevância:** venue do RA vem com evento → `has_events` → `relevant`.
 - Evidência: `EventSource`/`VenueSource` com `source_type="ra"`, `source_url` = URL do RA.
 
 ## 6. Runners & integração
@@ -65,7 +66,7 @@ Mesma forma das fontes existentes (`Source` protocol: `venues()`/`event_pages()`
 
 - Páginas de artista/promoter do RA; ticketing/compra; presale.
 - Cidades além de SP; backfill de eventos passados.
-- **Google Places** (próximo sub-projeto — geocoding/enriquecimento p/ venues de OUTRAS fontes sem geo; RA já geocoda os dele).
+- **Google Places** (próximo sub-projeto — geocoda o `address` dos venues sem geo, incluindo os do RA).
 - Scraping das páginas HTML do RA (Cloudflare) — o GraphQL basta.
 - Filtro por gênero (RA já é nightlife; pega tudo de SP).
 
