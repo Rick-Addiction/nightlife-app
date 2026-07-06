@@ -72,3 +72,11 @@ def test_run_step_erro_ao_iniciar():
     r = _run_step("nope", ["programa_que_nao_existe_xyz_123"])
     assert r.ok is False
     assert "erro ao iniciar" in r.output
+
+
+def test_steps_inclui_ra():
+    from nightlife.daily import STEPS
+    nomes = [nome for nome, argv in STEPS]
+    assert "ingest_ra" in nomes
+    # ra vem antes do ig (venues do RA ancoram antes de scrapear)
+    assert nomes.index("ingest_ra") < nomes.index("ingest_ig")
