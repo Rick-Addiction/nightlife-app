@@ -9,7 +9,8 @@ import truststore
 
 truststore.inject_into_ssl()  # Avast intercepta TLS (padrao do projeto)
 
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 
@@ -18,11 +19,14 @@ from .ingestion.pipeline import run_ingestion
 from .ingestion.ra_source import RASource
 from .models import Event, Venue
 
+_SP_TZ = ZoneInfo("America/Sao_Paulo")
+
 
 def main() -> None:
+    today = datetime.now(_SP_TZ).date()  # "dia" ancorado em SP (disciplina do projeto)
     with SessionLocal() as session:
-        run = run_ingestion(session, RASource(reference=date.today()),
-                            reference=date.today(), label="ra")
+        run = run_ingestion(session, RASource(reference=today),
+                            reference=today, label="ra")
         session.commit()
         venues = session.scalar(select(func.count()).select_from(Venue))
         events = session.scalar(select(func.count()).select_from(Event))

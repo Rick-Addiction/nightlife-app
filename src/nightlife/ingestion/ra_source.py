@@ -106,7 +106,7 @@ class RASource:
         return []
 
     def events(self) -> list[RawEvent]:
-        reference = self._reference or date.today()
+        reference = self._reference or datetime.now(_SP_TZ).date()  # dia ancorado em SP
         gte = f"{reference.isoformat()}T00:00:00.000Z"
         headers = {"User-Agent": _USER_AGENT, "Content-Type": "application/json",
                    "Referer": "https://ra.co/"}
