@@ -111,3 +111,14 @@ Requer Playwright: `.venv/Scripts/python -m pip install playwright && .venv/Scri
 Ritmo conservador (1x/dia, headful, delays humanos, caps em `config.py`). Use uma
 conta **burner** (não a principal): o Instagram pode bloquear automação. Handles
 com falhas repetidas são auto-pausados.
+
+## Agendamento diário (Windows)
+
+Roda `discover_handles` → `ingest_ig` → `ingest_flyers` 1x/dia (headless), via Windows Task Scheduler.
+
+```powershell
+# registra a tarefa (uma vez; sem admin). Horario opcional (default 05:00):
+powershell -ExecutionPolicy Bypass -File scripts\register_daily_task.ps1 -At 05:00
+```
+
+A tarefa roda só quando você está logado (o Chromium headless e o Codex CLI precisam da sua sessão); se o PC estiver desligado no horário, roda assim que possível no próximo logon. Log em `logs/daily.log`. Para rodar à mão: `.venv\Scripts\python -m nightlife.daily`. Para remover: `Unregister-ScheduledTask -TaskName NightlifeDaily -Confirm:$false`.
