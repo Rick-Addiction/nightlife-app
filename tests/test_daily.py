@@ -34,3 +34,24 @@ def test_run_daily_loga_por_passo():
     logs = []
     run_daily([("a", ["x"])], run=lambda n, a: StepResult(n, True), log=logs.append)
     assert any("a" in m for m in logs)
+
+
+import sys
+from nightlife.daily import _run_step
+
+
+def test_run_step_ok():
+    r = _run_step("echo", [sys.executable, "-c", "print('oi')"])
+    assert r.ok is True
+    assert "oi" in r.output
+
+
+def test_run_step_falha_em_returncode_nao_zero():
+    r = _run_step("fail", [sys.executable, "-c", "import sys; sys.exit(3)"])
+    assert r.ok is False
+
+
+def test_run_step_erro_ao_iniciar():
+    r = _run_step("nope", ["programa_que_nao_existe_xyz_123"])
+    assert r.ok is False
+    assert "erro ao iniciar" in r.output
