@@ -84,3 +84,45 @@ def parse_ra_events(data: dict, *, reference: date) -> list[RawEvent]:
             raw_payload=json.dumps(e, ensure_ascii=False, sort_keys=True),
         ))
     return out
+
+
+class RASource:
+    """Fonte real #3: eventos de SP via a API GraphQL do Resident Advisor."""
+
+    def __init__(self, *, endpoint: str = RA_ENDPOINT, area_id: int = SP_AREA_ID,
+                 page_size: int = 50, max_pages: int = 10,
+                 reference: date | None = None, timeout: float = 40.0) -> None:
+        self._endpoint = endpoint
+        self._area_id = area_id
+        self._page_size = page_size
+        self._max_pages = max_pages
+        self._reference = reference
+        self._timeout = timeout
+
+    def venues(self) -> list[RawVenue]:
+        return []  # venue vem EMBUTIDO nos eventos
+
+    def event_pages(self):
+        return []
+
+    def events(self) -> list[RawEvent]:
+        reference = self._reference or date.today()
+        gte = f"{reference.isoformat()}T00:00:00.000Z"
+        headers = {"User-Agent": _USER_AGENT, "Content-Type": "application/json",
+                   "Referer": "https://ra.co/"}
+        out: list[RawEvent] = []
+        for page in range(1, self._max_pages + 1):
+            resp = httpx.post(
+                self._endpoint,
+                json={"query": _QUERY, "variables": {
+                    "f": {"areas": {"eq": self._area_id}, "listingDate": {"gte": gte}},
+                    "ps": self._page_size, "page": page}},
+                headers=headers, timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            batch = ((data.get("data") or {}).get("eventListings") or {}).get("data") or []
+            out.extend(parse_ra_events(data, reference=reference))
+            if len(batch) < self._page_size:
+                break
+        return out

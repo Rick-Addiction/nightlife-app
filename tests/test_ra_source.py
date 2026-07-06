@@ -48,3 +48,34 @@ def test_parse_ra_events():
 def test_parse_ra_events_vazio():
     assert parse_ra_events({}, reference=date(2099, 1, 1)) == []
     assert parse_ra_events({"data": {"eventListings": None}}, reference=date(2099, 1, 1)) == []
+
+
+from nightlife.ingestion import ra_source
+
+
+def test_ra_source_paginates_e_para(monkeypatch):
+    ev = {"event": {"id": "1", "title": "E", "date": "2099-07-08T00:00:00.000",
+                    "startTime": "2099-07-08T22:00:00.000", "contentUrl": "/events/1",
+                    "artists": [], "genres": [], "venue": {"name": "V", "contentUrl": "/clubs/1"}}}
+    pages = {
+        1: {"data": {"eventListings": {"data": [ev, ev]}}},   # cheia (== page_size 2)
+        2: {"data": {"eventListings": {"data": [ev]}}},        # < page_size -> para
+    }
+    seen = []
+
+    class _Resp:
+        def __init__(self, d): self._d = d
+        def raise_for_status(self): pass
+        def json(self): return self._d
+
+    def fake_post(url, **kw):
+        page = kw["json"]["variables"]["page"]
+        seen.append(page)
+        return _Resp(pages.get(page, {"data": {"eventListings": {"data": []}}}))
+
+    monkeypatch.setattr(ra_source.httpx, "post", fake_post)
+    src = ra_source.RASource(page_size=2, reference=date(2099, 1, 1))
+    events = src.events()
+    assert seen == [1, 2]                 # parou na pagina 2 (veio < page_size)
+    assert len(events) == 3               # 2 + 1
+    assert src.venues() == [] and src.event_pages() == []
