@@ -15,9 +15,11 @@ Quando um candidato a venue **não tem geo** para confirmar que é o mesmo lugar
 - **Sem geo → nunca auto_merge → review** (opção segura; custo = duplicados que resolvem quando o Places geocodar). Não usar endereço como proxy (fuzzy demais), nem só threshold de nome (não resolve "mono"/"mono").
 - **Reparar os 14 já colapsados** re-derivando o RA (apagar dados `source_type="ra"` + re-ingest). OSM/Sympla e eventos de flyer/IG **intactos**.
 
-## 3. O fix (core, cirúrgico) — `domain/matching.py`
+## 3. O fix (core) — DUAS peças
 
-Uma mudança em `classify_venue_match(score, *, distance_km)`:
+O fix tem duas partes que se completam: (A) `classify` não funde sem geo; (B) `upsert_venue` reconhece o MESMO venue por `source_url` (idempotência), pra a peça A não duplicar a cada run.
+
+### 3A. `classify_venue_match` (`domain/matching.py`)
 
 ```python
 def classify_venue_match(score, *, distance_km=None) -> str:
@@ -31,12 +33,27 @@ def classify_venue_match(score, *, distance_km=None) -> str:
         return "review"
     return "distinct"
 ```
+- Ambos geocodados e a <1km: `auto_merge` (seguro, como hoje). Candidato **sem geo**: `review`/`distinct`, **nunca funde**. Não mexe em `match_venue`, `normalize_name`, thresholds nem no boost geo.
 
-- Dois venues **ambos geocodados** e a <1km: `auto_merge` como hoje (seguro).
-- Qualquer candidato **sem geo**: score alto → `review` (venue novo + `DedupeCandidate`), score baixo → `distinct`. **Nunca funde.** → zero merge falso novo.
-- Não mexe em `match_venue`, `normalize_name`, thresholds, nem no boost geo. Só a árvore de decisão de `classify`.
+### 3B. Identidade por `source_url` em `upsert_venue` (`persistence/venues_repo.py`)
 
-**Interação com o pipeline:** `upsert_venue` (em `persistence/venues_repo.py`) já trata `review` criando venue novo + `DedupeCandidate`. Como os venues do RA são geoless, todos cairão em `review`/`distinct` (nunca `auto_merge`), criando venues separados. Custo aceito: duplicados (RA "Club Mono" ao lado do OSM "Mono Club") até o Places geocodar.
+**Por que:** sem a peça A, um venue geoless re-casava consigo mesmo por nome (auto_merge) — idempotente. Com a peça A ele iria pra `review` e **criaria duplicata a cada ingest** (o `ingest_ra` diário multiplicaria os 684). Correção: **antes** do matching por nome, se já existe um venue com a evidência exata `(source.source_type, source.source_url)` (e `source_url` não é None), é o **MESMO** venue — reusa (atualiza `last_seen`, preenche lacunas, grava evidência idempotente), sem criar nada nem classificar. Só quando NÃO há esse `source_url` conhecido é que roda o matching por nome/geo + `classify` (aí geoless → review).
+
+```python
+# no inicio de upsert_venue, antes do match_venue:
+if source.source_url:
+    known = session.scalars(
+        select(Venue).join(VenueSource).where(
+            VenueSource.source_type == source.source_type,
+            VenueSource.source_url == source.source_url,
+        )
+    ).first()
+    if known is not None:
+        # mesmo (source_type, source_url) -> mesma venue (idempotente, independe de geo)
+        ... (preenche lacunas geo/addr/cat, record_venue_evidence, recompute, return known)
+```
+
+`source_url` é identidade estável por fonte (RA `/clubs/ID`, OSM `osm.org/{type}/{id}`, Sympla a URL do evento). Isso torna re-ingest idempotente **independente de geo** — e é mais robusto que o auto_merge-por-nome que fazia esse papel antes.
 
 ## 4. Reparar os 14 já colapsados — runner `repair_ra_dedup`
 
@@ -53,10 +70,11 @@ Depois (smoke, não no runner): re-rodar `python -m nightlife.ingest_ra` → re-
 
 ## 5. Testes
 
-- **Puro (o grosso):** `classify_venue_match` — geoless + score≥merge → `"review"` (NÃO `auto_merge`); geoless + score entre review e merge → `"review"`; geoless + score<review → `"distinct"`; ambos-geo + perto + score≥merge → `"auto_merge"` (inalterado); ambos-geo + longe → `"distinct"` (inalterado).
-- **Ajustar** os testes existentes de `classify`/`upsert_venue`/`matching` que assumiam `auto_merge` para candidato sem geo (agora esperam `review`).
-- **`repair_ra_dedup`:** com DB seedado (venue OSM + evidência RA falsa + venue RA-only + evento RA-only + evento multi-fonte) → depois do `repair`: evidência RA some, venue RA-only some, evento RA-only some, mas o venue OSM e o evento multi-fonte **sobrevivem**.
-- Suíte backend verde. Smoke real: rodar o repair + `ingest_ra`; confirmar que "mono"/"sao paulo" viram venues separados (sem colapso).
+- **`classify_venue_match` (puro):** geoless + score≥merge → `"review"` (NÃO `auto_merge`); geoless + score entre review e merge → `"review"`; geoless + score<review → `"distinct"`; ambos-geo + perto + score≥merge → `"auto_merge"` (inalterado); ambos-geo + longe → `"distinct"` (inalterado).
+  - **Ajustar** `test_classify_venue_match_bands` (em `test_matching.py`): hoje chama `classify_venue_match(0.90)` sem distância → agora isso é geoless → `"review"`. Passar a testar as faixas COM geo (`distance_km=0.3`).
+- **Identidade por source_url (`upsert_venue`, DB):** venue geoless re-ingerido com o MESMO `(source_type, source_url)` → **1 venue** (idempotente, evidência não duplica). Venue geoless com `source_url` NOVO cujo nome casa um existente → `review` (cria 2º venue + `DedupeCandidate`, não funde). Verificar que `test_rerun_same_source_is_idempotent` (geoless) segue verde **por causa** da identidade por source_url.
+- **`repair_ra_dedup` (DB):** seed = venue OSM + evidência RA falsa nele + venue RA-only + evento RA-only + evento multi-fonte (RA+outra) → depois do `repair`: evidência RA some, venue RA-only some, evento RA-only some; o venue OSM e o evento multi-fonte **sobrevivem**.
+- Suíte backend verde. Smoke real: rodar o `repair_ra_dedup` + `ingest_ra`; confirmar que "mono"/"sao paulo" viram venues separados (sem colapso) e que re-rodar `ingest_ra` **não** duplica (idempotente por source_url).
 
 ## 6. Não-objetivos (YAGNI)
 
@@ -67,7 +85,7 @@ Depois (smoke, não no runner): re-rodar `python -m nightlife.ingest_ra` → re-
 
 ## 7. Definition of Done
 
-- [ ] `classify_venue_match`: sem geo → nunca `auto_merge` (review/distinct); testado (5 casos).
-- [ ] Testes existentes de classify/upsert/matching ajustados p/ a nova semântica geoless.
+- [ ] **3A** `classify_venue_match`: sem geo → nunca `auto_merge` (review/distinct); testado (5 casos); `test_classify_venue_match_bands` ajustado p/ testar com geo.
+- [ ] **3B** `upsert_venue`: identidade por `(source_type, source_url)` antes do matching por nome → re-ingest geoless é idempotente; testado.
 - [ ] `repair_ra_dedup` apaga só dados RA (re-derivável); testado (OSM/multi-fonte sobrevivem).
-- [ ] Suíte verde; smoke: repair + ingest_ra → "mono"/"sao paulo" separados, D-EDGE ainda presente.
+- [ ] Suíte verde; smoke: repair + ingest_ra → "mono"/"sao paulo" separados, D-EDGE presente, re-run não duplica.
