@@ -6,6 +6,7 @@ import { filterReducer, initialFilters, queryFromFilters } from './filters/state
 import { FilterBar, type View } from './filters/FilterBar'
 import { EventList } from './list/EventList'
 import { MapView } from './map/MapView'
+import type { VenueOut } from './api/types'
 
 export default function App() {
   const [filters, dispatch] = useReducer(filterReducer, initialFilters)
@@ -16,12 +17,14 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [genres, setGenres] = useState<string[]>([])
+  const [venues, setVenues] = useState<VenueOut[]>([])
+  const [showVenues, setShowVenues] = useState(true)
 
   useEffect(() => {
     let alive = true
     setLoading(true); setError(null)
     Promise.all([fetchEvents(queryFromFilters(filters)), fetchVenues()])
-      .then(([evs, vns]) => { if (alive) setEvents(joinEventsWithVenues(evs, vns)) })
+      .then(([evs, vns]) => { if (alive) { setEvents(joinEventsWithVenues(evs, vns)); setVenues(vns) } })
       .catch((e) => { if (alive) setError(String(e)) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
@@ -42,7 +45,8 @@ export default function App() {
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <FilterBar filters={filters} genres={genres} dispatch={dispatch} view={view} onView={setView} />
+      <FilterBar filters={filters} genres={genres} dispatch={dispatch} view={view} onView={setView}
+                 showVenues={showVenues} onToggleVenues={() => setShowVenues((s) => !s)} />
       {error && (
         <div className="empty" style={{ color: '#e07dd0' }}>
           Não consegui falar com a API — o uvicorn está no ar? ({error})
@@ -59,7 +63,8 @@ export default function App() {
           </div>
           {view === 'split' && (
             <div style={{ flex: 1 }}>
-              <MapView events={events} selectedId={selectedId} onSelect={setSelectedId} />
+              <MapView events={events} venues={venues} selectedId={selectedId} onSelect={setSelectedId}
+                       showVenues={showVenues} />
             </div>
           )}
         </div>
