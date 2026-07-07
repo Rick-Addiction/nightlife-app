@@ -1,6 +1,6 @@
 import { Map, Marker, Popup, Source, Layer } from 'react-map-gl/maplibre'
 import type { MapLayerMouseEvent } from 'react-map-gl/maplibre'
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { EventWithGeo } from '../data/join'
 import type { VenueOut } from '../api/types'
@@ -35,10 +35,16 @@ export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
   const [selVenue, setSelVenue] = useState<SelVenue | null>(null)
   const mappable = events.filter((e) => e.mappable)
   const popup = mappable.find((e) => e.id === (popupId ?? selectedId))
+  // recriar a FeatureCollection a cada render forcaria um deepEqual sobre ~800
+  // features; memoiza pra so recalcular quando os venues mudam.
+  const venuesFC = useMemo(() => venuesToFeatureCollection(venues), [venues])
+  // desligar a camada deve fechar o popup do venue (senao fica pendurado)
+  useEffect(() => { if (!showVenues) setSelVenue(null) }, [showVenues])
 
   const onMapClick = (e: MapLayerMouseEvent) => {
     const f = e.features?.[0]
-    if (f && f.layer.id === 'venues' && f.geometry.type === 'Point') {
+    // aceita 'venues' e 'venues-sel' (o halo do selecionado tambem e clicavel)
+    if (f && (f.layer.id === 'venues' || f.layer.id === 'venues-sel') && f.geometry.type === 'Point') {
       const [lng, lat] = f.geometry.coordinates as [number, number]
       const p = f.properties as { id: number; name: string; category: string | null }
       setSelVenue({ id: p.id, name: p.name, category: p.category, lng, lat })
@@ -54,11 +60,11 @@ export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
       initialViewState={{ longitude: -46.63, latitude: -23.55, zoom: 11 }}
       mapStyle={MAP_STYLE}
       style={{ width: '100%', height: '100%' }}
-      interactiveLayerIds={showVenues ? ['venues'] : []}
+      interactiveLayerIds={showVenues ? ['venues', 'venues-sel'] : []}
       onClick={onMapClick}
     >
       {showVenues && (
-        <Source id="venues" type="geojson" data={venuesToFeatureCollection(venues)}>
+        <Source id="venues" type="geojson" data={venuesFC}>
           <Layer id="venues" type="circle" paint={{
             'circle-radius': 3.5,
             'circle-color': '#5a6b8a',

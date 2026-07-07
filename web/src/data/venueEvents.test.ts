@@ -22,4 +22,12 @@ describe('upcomingEventsAtVenue', () => {
   it('venue sem eventos vira lista vazia', () => {
     expect(upcomingEventsAtVenue([ev({ venue_id: 1 })], 999)).toEqual([])
   })
+
+  it('evento sem data vai para o fim, nao para o topo', () => {
+    const events = [
+      ev({ id: 1, venue_id: 5, starts_at: null }),
+      ev({ id: 2, venue_id: 5, starts_at: '2026-07-11T23:00:00-03:00' }),
+    ]
+    expect(upcomingEventsAtVenue(events, 5).map((e) => e.id)).toEqual([2, 1])
+  })
 })
