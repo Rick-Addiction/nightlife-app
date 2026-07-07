@@ -78,7 +78,7 @@ def test_ra_source_paginates_e_para(monkeypatch):
     events = src.events()
     assert seen == [1, 2]                 # parou na pagina 2 (veio < page_size)
     assert len(events) == 3               # 2 + 1
-    assert src.venues() == [] and src.event_pages() == []
+    assert src.event_pages() == []
 
 
 from nightlife.ingestion.ra_source import parse_ra_venues
@@ -109,3 +109,26 @@ def test_parse_ra_venues():
 def test_parse_ra_venues_vazio():
     assert parse_ra_venues({}) == []
     assert parse_ra_venues({"data": {"venues": None}}) == []
+
+
+def test_ra_source_venues_busca_diretorio(monkeypatch):
+    captured = {}
+
+    class _Resp:
+        def raise_for_status(self): pass
+        def json(self):
+            return {"data": {"venues": [
+                {"id": "4973", "name": "D-EDGE", "address": "Alameda Olga, 170",
+                 "contentUrl": "/clubs/4973", "isClosed": False}]}}
+
+    def fake_post(url, **kw):
+        captured.update(kw["json"]["variables"])
+        return _Resp()
+
+    monkeypatch.setattr(ra_source.httpx, "post", fake_post)
+    src = ra_source.RASource()
+    vs = src.venues()
+    assert captured["o"] == "ALPHABETICAL"
+    assert captured["l"] == 20              # quirk do RA: limit<=20 traz os 684
+    assert captured["a"] == 400             # SP
+    assert [v.name for v in vs] == ["D-EDGE"]

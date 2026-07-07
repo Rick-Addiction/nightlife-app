@@ -21,6 +21,13 @@ SP_AREA_ID = 400  # area(areaUrlName="saopaulo", countryUrlCode="br") -> id 400
 _SP_TZ = ZoneInfo("America/Sao_Paulo")
 _USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
 
+_VENUE_DIR_LIMIT = 20  # QUIRK do RA: limit<=20 retorna os 684 de SP; limit>=50 retorna 0
+_VENUES_QUERY = """query($a: ID, $o: OrderByType!, $l: Int) {
+  venues(areaId: $a, orderBy: $o, limit: $l, closed: false) {
+    id name address contentUrl eventCountThisYear isClosed
+  }
+}"""
+
 _QUERY = """query($f: FilterInputDtoInput, $ps: Int, $page: Int) {
   eventListings(filters: $f, pageSize: $ps, page: $page) {
     data { event {
@@ -122,7 +129,16 @@ class RASource:
         self._timeout = timeout
 
     def venues(self) -> list[RawVenue]:
-        return []  # venue vem EMBUTIDO nos eventos
+        resp = httpx.post(
+            self._endpoint,
+            json={"query": _VENUES_QUERY, "variables": {
+                "a": self._area_id, "o": "ALPHABETICAL", "l": _VENUE_DIR_LIMIT}},
+            headers={"User-Agent": _USER_AGENT, "Content-Type": "application/json",
+                     "Referer": "https://ra.co/"},
+            timeout=self._timeout,
+        )
+        resp.raise_for_status()
+        return parse_ra_venues(resp.json())
 
     def event_pages(self):
         return []
