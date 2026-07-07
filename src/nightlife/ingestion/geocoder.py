@@ -26,8 +26,12 @@ class Geocoder(Protocol):
 
 
 class GoogleGeocoder:
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, client: httpx.Client | None = None) -> None:
         self._key = api_key
+        # UM client reutilizado (pool de conexoes). httpx.get() construiria um
+        # Client novo + contexto SSL/truststore a CADA chamada -> em ~600 chamadas
+        # estoura "Too many open files" (Errno 24) e paga handshake TLS toda vez.
+        self._client = client or httpx.Client(timeout=_TIMEOUT)
 
     def geocode(self, address: str) -> GeocodeResult:
         params = {
@@ -37,7 +41,7 @@ class GoogleGeocoder:
             "components": "country:BR",
         }
         try:
-            resp = httpx.get(_ENDPOINT, params=params, timeout=_TIMEOUT)
+            resp = self._client.get(_ENDPOINT, params=params)
             resp.raise_for_status()
             data = resp.json()
         except (httpx.HTTPError, ValueError):
