@@ -52,3 +52,68 @@ def merge_venues(session: Session, survivor: Venue, loser: Venue, *, reference: 
     session.flush()
     recompute_venue_confidence(session, survivor, reference=reference)
     return survivor
+
+
+def _ref(v: Venue) -> VenueRef:
+    return VenueRef(v.id, v.name, v.address, v.lat, v.lng)
+
+
+def _pick_survivor(a: Venue, b: Venue) -> tuple[Venue, Venue]:
+    """survivor = maior confianca; empate -> menor id (mais antigo, tende a OSM)."""
+    if (a.confidence, -a.id) >= (b.confidence, -b.id):
+        return a, b
+    return b, a
+
+
+def rededup_geocoded(session: Session, geocoded_ids: list[int], *, reference: date) -> dict:
+    """Re-avalia cada venue recem-geocodado contra os outros COM geo. auto_merge
+    funde; review enfileira DedupeCandidate; distinct ignora."""
+    counts = {"merged": 0, "review": 0, "distinct": 0}
+    merged_away: set[int] = set()
+
+    for vid in geocoded_ids:
+        if vid in merged_away:
+            continue
+        venue = session.get(Venue, vid)
+        if venue is None or venue.lat is None:
+            continue
+
+        others = session.scalars(
+            select(Venue).where(Venue.id != vid, Venue.lat.is_not(None))
+        ).all()
+        if not others:
+            continue
+        best = match_venue(_ref(venue), [_ref(o) for o in others], threshold=0.0)
+        if best is None:
+            continue
+        other = session.get(Venue, best.venue.id)
+        decision = classify_venue_match(
+            best.score, distance_km=geo_distance_km(_ref(venue), _ref(other))
+        )
+
+        if decision == "auto_merge":
+            survivor, loser = _pick_survivor(venue, other)
+            merge_venues(session, survivor, loser, reference=reference)
+            merged_away.add(loser.id)
+            counts["merged"] += 1
+        elif decision == "review":
+            exists = session.scalars(
+                select(DedupeCandidate).where(
+                    DedupeCandidate.kind == "venue",
+                    or_(
+                        (DedupeCandidate.a_id == venue.id) & (DedupeCandidate.b_id == other.id),
+                        (DedupeCandidate.a_id == other.id) & (DedupeCandidate.b_id == venue.id),
+                    ),
+                )
+            ).first()
+            if exists is None:
+                session.add(DedupeCandidate(
+                    kind="venue", a_id=venue.id, b_id=other.id,
+                    similarity_score=best.score, decision="review",
+                ))
+            counts["review"] += 1
+        else:
+            counts["distinct"] += 1
+
+    session.flush()
+    return counts
