@@ -10,12 +10,14 @@ const PRESETS: { key: Preset; label: string }[] = [
   { key: 'all', label: 'Tudo' },
 ]
 
-export function FilterBar({ filters, genres, dispatch, view, onView }: {
+export function FilterBar({ filters, genres, dispatch, view, onView, showVenues, onToggleVenues }: {
   filters: FilterState
   genres: string[]
   dispatch: Dispatch<FilterAction>
   view: View
   onView: (v: View) => void
+  showVenues: boolean
+  onToggleVenues: () => void
 }) {
   return (
     <div className="filterbar" style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 12, borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
@@ -38,11 +40,17 @@ export function FilterBar({ filters, genres, dispatch, view, onView }: {
                onChange={(e) => dispatch({ type: 'setMinConfidence', value: Number(e.target.value) })} />
       </label>
 
-      <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
-        <button onClick={() => onView('list')} aria-pressed={view === 'list'}
-                style={{ fontWeight: view === 'list' ? 700 : 400 }}>Só lista</button>
-        <button onClick={() => onView('split')} aria-pressed={view === 'split'}
-                style={{ fontWeight: view === 'split' ? 700 : 400 }}>Lista + Mapa</button>
+      <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
+        <label style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <input type="checkbox" checked={showVenues} onChange={onToggleVenues} />
+          Locais
+        </label>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={() => onView('list')} aria-pressed={view === 'list'}
+                  style={{ fontWeight: view === 'list' ? 700 : 400 }}>Só lista</button>
+          <button onClick={() => onView('split')} aria-pressed={view === 'split'}
+                  style={{ fontWeight: view === 'split' ? 700 : 400 }}>Lista + Mapa</button>
+        </div>
       </div>
     </div>
   )
