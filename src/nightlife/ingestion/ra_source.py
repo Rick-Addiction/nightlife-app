@@ -8,6 +8,7 @@ dedup c/ OSM ou do Google Places depois."""
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -16,10 +17,19 @@ import httpx
 from ..extraction.base import parse_iso
 from .base import RawEvent, RawVenue
 
+_log = logging.getLogger(__name__)
+
 RA_ENDPOINT = "https://ra.co/graphql"
 SP_AREA_ID = 400  # area(areaUrlName="saopaulo", countryUrlCode="br") -> id 400
 _SP_TZ = ZoneInfo("America/Sao_Paulo")
 _USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+
+_VENUE_DIR_LIMIT = 20  # QUIRK do RA: limit<=20 retorna os 684 de SP; limit>=50 retorna 0
+_VENUES_QUERY = """query($a: ID, $o: OrderByType!, $l: Int) {
+  venues(areaId: $a, orderBy: $o, limit: $l, closed: false) {
+    id name address contentUrl eventCountThisYear isClosed
+  }
+}"""
 
 _QUERY = """query($f: FilterInputDtoInput, $ps: Int, $page: Int) {
   eventListings(filters: $f, pageSize: $ps, page: $page) {
@@ -54,6 +64,28 @@ def _venue_of(v: dict) -> RawVenue | None:
         category="nightclub",  # RA so lista nightlife
         source_url=f"https://ra.co{content}" if content else None,
     )
+
+
+def parse_ra_venues(data: dict) -> list[RawVenue]:
+    """Resultado da query `venues` do RA -> RawVenues (diretorio). Puro.
+    Descarta fechados, TBA e sem-nome. RA nao da geo (lat/lng None)."""
+    out: list[RawVenue] = []
+    for v in (data.get("data") or {}).get("venues") or []:
+        if v.get("isClosed"):
+            continue
+        name = (v.get("name") or "").strip()
+        if not name or name.upper().startswith("TBA"):
+            continue
+        content = v.get("contentUrl")
+        out.append(RawVenue(
+            name=name,
+            source_type="ra",
+            lat=None, lng=None,
+            address=(v.get("address") or "").strip() or None,
+            category="nightclub",
+            source_url=f"https://ra.co{content}" if content else None,
+        ))
+    return out
 
 
 def parse_ra_events(data: dict, *, reference: date) -> list[RawEvent]:
@@ -100,7 +132,23 @@ class RASource:
         self._timeout = timeout
 
     def venues(self) -> list[RawVenue]:
-        return []  # venue vem EMBUTIDO nos eventos
+        """Diretorio de venues de SP. BEST-EFFORT: uma falha aqui (RA fora/muda)
+        retorna [] e NAO derruba a ingestao de eventos (o diretorio e suplementar;
+        os eventos sao o produto core). events() continua propagando erro."""
+        try:
+            resp = httpx.post(
+                self._endpoint,
+                json={"query": _VENUES_QUERY, "variables": {
+                    "a": self._area_id, "o": "ALPHABETICAL", "l": _VENUE_DIR_LIMIT}},
+                headers={"User-Agent": _USER_AGENT, "Content-Type": "application/json",
+                         "Referer": "https://ra.co/"},
+                timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            return parse_ra_venues(resp.json())
+        except Exception as exc:  # noqa: BLE001 — best-effort; eventos seguem
+            _log.warning("RA diretorio de venues falhou (%s) — seguindo sem diretorio", exc)
+            return []
 
     def event_pages(self):
         return []

@@ -78,4 +78,65 @@ def test_ra_source_paginates_e_para(monkeypatch):
     events = src.events()
     assert seen == [1, 2]                 # parou na pagina 2 (veio < page_size)
     assert len(events) == 3               # 2 + 1
-    assert src.venues() == [] and src.event_pages() == []
+    assert src.event_pages() == []
+
+
+from nightlife.ingestion.ra_source import parse_ra_venues
+
+RA_VENUES = {"data": {"venues": [
+    {"id": "4973", "name": "D-EDGE", "address": "Alameda Olga, 170",
+     "contentUrl": "/clubs/4973", "eventCountThisYear": 12, "isClosed": False},
+    {"id": "1", "name": "Fechado", "address": "X",
+     "contentUrl": "/clubs/1", "eventCountThisYear": 0, "isClosed": True},   # fechado -> fora
+    {"id": "2", "name": "TBA - Rua Y", "address": None,
+     "contentUrl": None, "eventCountThisYear": 0, "isClosed": False},        # TBA -> fora
+    {"id": "3", "name": "", "address": None,
+     "contentUrl": "/clubs/3", "eventCountThisYear": 0, "isClosed": False},  # sem nome -> fora
+]}}
+
+
+def test_parse_ra_venues():
+    vs = parse_ra_venues(RA_VENUES)
+    assert [v.name for v in vs] == ["D-EDGE"]   # fechado/TBA/vazio descartados
+    d = vs[0]
+    assert d.source_type == "ra"
+    assert d.category == "nightclub"
+    assert d.lat is None and d.lng is None       # RA nao da geo
+    assert d.address == "Alameda Olga, 170"
+    assert d.source_url == "https://ra.co/clubs/4973"
+
+
+def test_parse_ra_venues_vazio():
+    assert parse_ra_venues({}) == []
+    assert parse_ra_venues({"data": {"venues": None}}) == []
+
+
+def test_ra_source_venues_busca_diretorio(monkeypatch):
+    captured = {}
+
+    class _Resp:
+        def raise_for_status(self): pass
+        def json(self):
+            return {"data": {"venues": [
+                {"id": "4973", "name": "D-EDGE", "address": "Alameda Olga, 170",
+                 "contentUrl": "/clubs/4973", "isClosed": False}]}}
+
+    def fake_post(url, **kw):
+        captured.update(kw["json"]["variables"])
+        return _Resp()
+
+    monkeypatch.setattr(ra_source.httpx, "post", fake_post)
+    src = ra_source.RASource()
+    vs = src.venues()
+    assert captured["o"] == "ALPHABETICAL"
+    assert captured["l"] == 20              # quirk do RA: limit<=20 traz os 684
+    assert captured["a"] == 400             # SP
+    assert [v.name for v in vs] == ["D-EDGE"]
+
+
+def test_ra_source_venues_best_effort_em_falha(monkeypatch):
+    # falha ao buscar o diretorio NAO propaga (eventos, o produto core, seguem)
+    def boom(url, **kw):
+        raise ra_source.httpx.ConnectError("rede caiu")
+    monkeypatch.setattr(ra_source.httpx, "post", boom)
+    assert ra_source.RASource().venues() == []
