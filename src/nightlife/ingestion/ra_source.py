@@ -56,6 +56,28 @@ def _venue_of(v: dict) -> RawVenue | None:
     )
 
 
+def parse_ra_venues(data: dict) -> list[RawVenue]:
+    """Resultado da query `venues` do RA -> RawVenues (diretorio). Puro.
+    Descarta fechados, TBA e sem-nome. RA nao da geo (lat/lng None)."""
+    out: list[RawVenue] = []
+    for v in (data.get("data") or {}).get("venues") or []:
+        if v.get("isClosed"):
+            continue
+        name = (v.get("name") or "").strip()
+        if not name or name.upper().startswith("TBA"):
+            continue
+        content = v.get("contentUrl")
+        out.append(RawVenue(
+            name=name,
+            source_type="ra",
+            lat=None, lng=None,
+            address=(v.get("address") or "").strip() or None,
+            category="nightclub",
+            source_url=f"https://ra.co{content}" if content else None,
+        ))
+    return out
+
+
 def parse_ra_events(data: dict, *, reference: date) -> list[RawEvent]:
     """JSON do eventListings do RA -> RawEvents. Puro. Descarta sem titulo e passados (dia SP)."""
     listings = ((data.get("data") or {}).get("eventListings")) or {}
