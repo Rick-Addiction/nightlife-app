@@ -131,3 +131,12 @@ class IgProfileState(Base):
     last_shortcode: Mapped[str | None] = mapped_column(String(50), default=None)
     last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class GeocodeCache(Base):
+    __tablename__ = "geocode_cache"
+    address_norm: Mapped[str] = mapped_column(String(500), primary_key=True)
+    status: Mapped[str] = mapped_column(String(20))          # OK | ZERO_RESULTS
+    lat: Mapped[float | None] = mapped_column(Float, default=None)
+    lng: Mapped[float | None] = mapped_column(Float, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
