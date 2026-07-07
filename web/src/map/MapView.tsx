@@ -43,8 +43,8 @@ export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
 
   const onMapClick = (e: MapLayerMouseEvent) => {
     const f = e.features?.[0]
-    // aceita 'venues' e 'venues-sel' (o halo do selecionado tambem e clicavel)
-    if (f && (f.layer.id === 'venues' || f.layer.id === 'venues-sel') && f.geometry.type === 'Point') {
+    // aceita a camada base e o halo do selecionado (ambos carregam a prop id)
+    if (f && (f.layer.id === 'venue-dots' || f.layer.id === 'venue-sel') && f.geometry.type === 'Point') {
       const [lng, lat] = f.geometry.coordinates as [number, number]
       const p = f.properties as { id: number; name: string; category: string | null }
       setSelVenue({ id: p.id, name: p.name, category: p.category, lng, lat })
@@ -60,17 +60,20 @@ export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
       initialViewState={{ longitude: -46.63, latitude: -23.55, zoom: 11 }}
       mapStyle={MAP_STYLE}
       style={{ width: '100%', height: '100%' }}
-      interactiveLayerIds={showVenues ? ['venues', 'venues-sel'] : []}
+      interactiveLayerIds={showVenues ? ['venue-dots', 'venue-sel'] : []}
       onClick={onMapClick}
+      // container flex dimensiona depois do mount; um resize garante que as
+      // camadas GL pintem (os Markers DOM projetam mesmo sem isso)
+      onLoad={(e) => e.target.resize()}
     >
       {showVenues && (
-        <Source id="venues" type="geojson" data={venuesFC}>
-          <Layer id="venues" type="circle" paint={{
+        <Source id="venues-src" type="geojson" data={venuesFC}>
+          <Layer id="venue-dots" type="circle" paint={{
             'circle-radius': 3.5,
             'circle-color': '#5a6b8a',
             'circle-opacity': 0.7,
           }} />
-          <Layer id="venues-sel" type="circle"
+          <Layer id="venue-sel" type="circle"
                  filter={['==', ['get', 'id'], selVenue?.id ?? -1]}
                  paint={{ 'circle-radius': 7, 'circle-color': '#8fb0ff', 'circle-opacity': 0.95 }} />
         </Source>
