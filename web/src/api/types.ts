@@ -5,6 +5,8 @@ export interface VenueOut {
   lat: number | null
   lng: number | null
   address: string | null
+  instagram: string | null
+  website: string | null
   status: string
   confidence: number
   effective_confidence: number

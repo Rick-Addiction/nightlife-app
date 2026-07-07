@@ -14,6 +14,8 @@ class VenueOut(BaseModel):
     lat: float | None = None
     lng: float | None = None
     address: str | None = None
+    instagram: str | None = None
+    website: str | None = None
     status: str
     confidence: int
     effective_confidence: int = 0

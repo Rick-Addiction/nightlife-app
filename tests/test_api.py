@@ -172,6 +172,21 @@ def test_venues_esconde_dormant_e_buffet_por_padrao(session):
         app.dependency_overrides.clear()
 
 
+def test_venue_out_inclui_instagram_e_website(session):
+    v = Venue(name="D-Edge", category="nightclub", lat=-23.53, lng=-46.66,
+              status="operational", confidence=80, is_monitored=True,
+              instagram="dedgeclub", website="https://d-edge.com.br")
+    session.add(v)
+    session.flush()
+    client = _client(session)
+    try:
+        row = next(x for x in client.get("/venues").json() if x["name"] == "D-Edge")
+        assert row["instagram"] == "dedgeclub"
+        assert row["website"] == "https://d-edge.com.br"
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_events_esconde_evento_de_venue_buffet(session):
     from datetime import datetime as _dt
     buf = Venue(name="Buffet Festas", status="operational", confidence=60)
