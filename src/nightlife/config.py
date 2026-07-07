@@ -23,3 +23,7 @@ IG_MAX_POSTS_INCREMENTAL = int(os.environ.get("IG_MAX_POSTS_INCREMENTAL", "12"))
 IG_DELAY_MIN = float(os.environ.get("IG_DELAY_MIN", "4"))
 IG_DELAY_MAX = float(os.environ.get("IG_DELAY_MAX", "11"))
 IG_FAILURE_PAUSE_THRESHOLD = int(os.environ.get("IG_FAILURE_PAUSE_THRESHOLD", "3"))
+
+# Google Geocoding API (endereco -> coordenada). Chave criada pelo usuario no
+# Google Cloud (Geocoding API + billing). Sem ela, o runner de geocoding aborta.
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY") or None

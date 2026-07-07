@@ -51,6 +51,7 @@ STEP_TIMEOUT = int(os.environ.get("DAILY_STEP_TIMEOUT", "1200"))  # 20 min por p
 STEPS: list[tuple[str, list[str]]] = [
     ("discover_handles", [sys.executable, "-m", "nightlife.discover_handles"]),
     ("ingest_ra", [sys.executable, "-m", "nightlife.ingest_ra"]),
+    ("geocode_venues", [sys.executable, "-m", "nightlife.geocode_venues"]),
     ("ingest_ig", [sys.executable, "-m", "nightlife.ingest_ig"]),
     ("ingest_flyers", [sys.executable, "-m", "nightlife.ingest_flyers"]),
 ]
