@@ -66,6 +66,17 @@ def test_rerun_usa_cache_e_nao_rechama(session):
     assert g.calls == calls_antes   # 0 novas chamadas (cache hit)
 
 
+def test_relatorio_separa_error_de_zero_results(session):
+    # ERROR (quota/rede) nao pode ser contado como ZERO_RESULTS: esconderia
+    # "API caiu" no run real. O endereco nao geocodado fica sem geo.
+    v = _venue(session, "Quota Estourada", "Rua Z Sao Paulo")
+    g = FakeGeocoder({"Sao Paulo": GeocodeResult(status="ERROR")})
+    out = geocode_all(session, g, reference=REF)
+    session.flush()
+    assert out["errors"] == 1 and out["zero_results"] == 0
+    assert session.get(Venue, v.id).lat is None
+
+
 def test_relatorio_conta_in_out_sp(session):
     _venue(session, "Em SP", "Rua A Sao Paulo")
     _venue(session, "Fora SP", "Rua B Itapema")

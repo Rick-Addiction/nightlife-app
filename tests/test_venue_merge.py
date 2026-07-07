@@ -57,6 +57,21 @@ def test_merge_nao_duplica_evidencia_igual(session):
     assert len(rows) == 1  # nao virou linha dupla
 
 
+def test_merge_registra_verification_log(session):
+    # merge e irreversivel: precisa deixar trilha do que fundiu em quem
+    from nightlife.models import VerificationLog
+    survivor = _venue(session, "Cine Joia", lat=-23.55, lng=-46.63)
+    loser = _venue(session, "Cine Joia", lat=-23.55, lng=-46.63)
+    loser_id = loser.id
+    merge_venues(session, survivor, loser, reference=REF)
+    session.flush()
+    logs = session.scalars(
+        select(VerificationLog).where(VerificationLog.entity_type == "venue")
+    ).all()
+    assert any(str(loser_id) in (lg.note or "") and lg.entity_id == survivor.id
+               for lg in logs)
+
+
 def test_merge_preenche_lacunas_e_limpa_dedupe_candidate(session):
     survivor = _venue(session, "Selva", lat=-23.5, lng=-46.6)   # sem address
     loser = _venue(session, "Selva", lat=-23.5, lng=-46.6, address="Rua Augusta, 100", instagram="selvasp")

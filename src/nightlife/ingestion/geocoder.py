@@ -45,8 +45,13 @@ class GoogleGeocoder:
 
         status = data.get("status")
         if status == "OK" and data.get("results"):
-            loc = data["results"][0]["geometry"]["location"]
-            return GeocodeResult(status="OK", lat=loc["lat"], lng=loc["lng"])
+            # extracao defensiva: um OK malformado (sem geometry/location) vira
+            # ERROR retentavel, nunca estoura para fora e aborta o backfill.
+            try:
+                loc = data["results"][0]["geometry"]["location"]
+                return GeocodeResult(status="OK", lat=loc["lat"], lng=loc["lng"])
+            except (KeyError, IndexError, TypeError):
+                return GeocodeResult(status="ERROR")
         if status == "ZERO_RESULTS":
             return GeocodeResult(status="ZERO_RESULTS")
         return GeocodeResult(status="ERROR")

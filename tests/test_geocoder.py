@@ -36,3 +36,12 @@ def test_excecao_de_rede_vira_error(monkeypatch):
     monkeypatch.setattr(httpx, "get", _boom)
     res = GoogleGeocoder("KEY").geocode("qualquer")
     assert res.status == "ERROR"
+
+
+def test_ok_malformado_sem_location_vira_error(monkeypatch):
+    # OK mas sem geometry/location: nao pode estourar KeyError (abortaria o run
+    # inteiro e faria rollback do cache) -> degrada para ERROR (retentavel).
+    payload = {"status": "OK", "results": [{"geometry": {}}]}
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: _fake_response(payload))
+    res = GoogleGeocoder("KEY").geocode("resposta estranha")
+    assert res.status == "ERROR"

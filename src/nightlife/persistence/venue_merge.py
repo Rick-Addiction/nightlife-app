@@ -11,13 +11,21 @@ from sqlalchemy.orm import Session
 from ..domain.matching import (
     VenueRef, classify_venue_match, geo_distance_km, match_venue,
 )
-from ..models import DedupeCandidate, Event, Venue, VenueSource
+from ..models import DedupeCandidate, Event, Venue, VenueSource, VerificationLog
 from .confidence import recompute_venue_confidence
 
 
 def merge_venues(session: Session, survivor: Venue, loser: Venue, *, reference: date) -> Venue:
+    # merge e irreversivel (delete fisico): registra a trilha antes de qualquer
+    # coisa, enquanto loser.id/name ainda sao validos.
+    session.add(VerificationLog(
+        entity_type="venue", entity_id=survivor.id,
+        note=f"merge: venue {loser.id} ({loser.name!r}) -> survivor {survivor.id} ({survivor.name!r})",
+    ))
     # 1. evidencia do loser -> survivor, pulando (source_type, source_url) que o
-    #    survivor ja tem (esses somem junto com o loser via cascade)
+    #    survivor ja tem (esses somem junto com o loser via cascade). NB: iteramos
+    #    via query (nao via loser.sources) de proposito — carregar a colecao do
+    #    loser faria o cascade delete-orphan varrer linhas ja remapeadas no flush.
     existing = {
         (s.source_type, s.source_url)
         for s in session.scalars(select(VenueSource).where(VenueSource.venue_id == survivor.id))

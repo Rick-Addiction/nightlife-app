@@ -27,7 +27,7 @@ def geocode_all(session: Session, geocoder: Geocoder, *, reference: date) -> dic
     ).all()
 
     geocoded_ids: list[int] = []
-    in_sp = out_sp = zero = 0
+    in_sp = out_sp = zero = errors = 0
     for v in pend:
         res = cache_lookup(session, v.address)
         if res is None:
@@ -40,13 +40,15 @@ def geocode_all(session: Session, geocoder: Geocoder, *, reference: date) -> dic
                 in_sp += 1
             else:
                 out_sp += 1
-        else:
+        elif res.status == "ZERO_RESULTS":
             zero += 1
+        else:  # ERROR (quota/rede/chave): nao cacheado, tenta de novo no proximo
+            errors += 1
     session.flush()
 
     dd = rededup_geocoded(session, geocoded_ids, reference=reference)
     return {"geocoded": len(geocoded_ids), "in_sp": in_sp, "out_sp": out_sp,
-            "zero_results": zero, **dd}
+            "zero_results": zero, "errors": errors, **dd}
 
 
 def main() -> None:
@@ -67,8 +69,8 @@ def main() -> None:
         out = geocode_all(session, GoogleGeocoder(GOOGLE_MAPS_API_KEY), reference=today)
         session.commit()
         print(f"geocoded={out['geocoded']} (in_sp={out['in_sp']} out_sp={out['out_sp']} "
-              f"zero_results={out['zero_results']}) | merged={out['merged']} "
-              f"review={out['review']} distinct={out['distinct']}")
+              f"zero_results={out['zero_results']} errors={out['errors']}) | "
+              f"merged={out['merged']} review={out['review']} distinct={out['distinct']}")
 
 
 if __name__ == "__main__":
