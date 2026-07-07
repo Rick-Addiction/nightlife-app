@@ -72,3 +72,21 @@ def test_mid_similarity_creates_new_plus_review_candidate(session):
     cands = session.scalars(select(DedupeCandidate)).all()
     assert len(cands) == 1
     assert cands[0].kind == "venue" and cands[0].decision == "review"
+
+
+def test_geoless_mesmo_source_url_e_idempotente(session):
+    # venue SEM geo, re-ingerido com o MESMO (source_type, source_url) -> 1 venue
+    upsert_venue(session, VenueInput(name="D-EDGE"), _src("ra", "https://ra.co/clubs/4973"), reference=REF)
+    upsert_venue(session, VenueInput(name="D-EDGE"), _src("ra", "https://ra.co/clubs/4973"), reference=REF)
+    assert len(session.scalars(select(Venue)).all()) == 1
+    assert len(session.scalars(select(VenueSource)).all()) == 1
+
+
+def test_geoless_nomes_iguais_fontes_diferentes_viram_review(session):
+    # "Club Mono" e "Mono Club" normalizam p/ "mono" (score 1.0), mas SEM geo e de
+    # fontes diferentes -> review (cria 2o venue), NUNCA funde
+    upsert_venue(session, VenueInput(name="Club Mono"), _src("ra", "https://ra.co/clubs/1"), reference=REF)
+    upsert_venue(session, VenueInput(name="Mono Club"), _src("osm", "https://osm.org/9"), reference=REF)
+    assert len(session.scalars(select(Venue)).all()) == 2          # nao fundiu
+    cands = session.scalars(select(DedupeCandidate)).all()
+    assert len(cands) == 1 and cands[0].decision == "review"
