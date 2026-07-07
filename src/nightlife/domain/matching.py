@@ -88,13 +88,12 @@ def geo_distance_km(a: VenueRef, b: VenueRef) -> float | None:
 
 def classify_venue_match(score: float, *, distance_km: float | None = None) -> str:
     """Faixas de decisao para upsert de venue: merge automatico so em alta
-    confianca; a faixa intermediaria cria venue novo + candidato de revisao
-    (um merge errado de venue envenena a ancora de todos os eventos).
-
-    Nomes parecidos a mais de MAX_DUPLICATE_DISTANCE_KM sao lugares fisicos
-    diferentes (filial, xara) — nunca merge nem review."""
+    confianca E com geo que confirme o lugar fisico. Sem geo (distance_km=None)
+    nao da pra distinguir 'Mono Club' de 'Club Mono' -> nunca auto_merge."""
     if distance_km is not None and distance_km > MAX_DUPLICATE_DISTANCE_KM:
-        return "distinct"
+        return "distinct"                 # longe demais = lugares diferentes
+    if distance_km is None:               # sem geo: sem confirmacao fisica
+        return "review" if score >= VENUE_REVIEW_THRESHOLD else "distinct"
     if score >= VENUE_MERGE_THRESHOLD:
         return "auto_merge"
     if score >= VENUE_REVIEW_THRESHOLD:
