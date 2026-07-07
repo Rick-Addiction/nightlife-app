@@ -54,12 +54,12 @@ def test_stopword_only_name_matches_itself():
 
 def test_classify_venue_match_bands():
     from nightlife.domain.matching import classify_venue_match
-
-    assert classify_venue_match(0.90) == "auto_merge"
-    assert classify_venue_match(0.85) == "auto_merge"
-    assert classify_venue_match(0.78) == "review"
-    assert classify_venue_match(0.70) == "review"
-    assert classify_venue_match(0.60) == "distinct"
+    # as faixas de merge/review/distinct valem COM geo (perto)
+    assert classify_venue_match(0.90, distance_km=0.3) == "auto_merge"
+    assert classify_venue_match(0.85, distance_km=0.3) == "auto_merge"
+    assert classify_venue_match(0.78, distance_km=0.3) == "review"
+    assert classify_venue_match(0.70, distance_km=0.3) == "review"
+    assert classify_venue_match(0.60, distance_km=0.3) == "distinct"
 
 
 def test_classify_venue_match_distance_gate():
@@ -77,3 +77,12 @@ def test_generic_venue_words_do_not_inflate_similarity():
     assert name_similarity("Espaço Esplannada", "Espaço Estupendo") < 0.7
     assert name_similarity("Espaço TH Eventos", "Praça dos Eventos") < 0.7
     assert name_similarity("Teatro Mooca", "Teatro Bor") < 0.7
+
+
+def test_classify_geoless_nunca_auto_merge():
+    from nightlife.domain.matching import classify_venue_match
+    # sem geo (distance_km=None) NAO da pra confirmar o lugar -> nunca auto_merge
+    assert classify_venue_match(1.0, distance_km=None) == "review"
+    assert classify_venue_match(0.90, distance_km=None) == "review"
+    assert classify_venue_match(0.70, distance_km=None) == "review"
+    assert classify_venue_match(0.60, distance_km=None) == "distinct"

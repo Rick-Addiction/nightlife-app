@@ -137,6 +137,30 @@ def test_pipeline_ingests_structured_events(session):
     assert v.confidence == 15            # future_event_linked (ticketing contribui 0 no venue)
 
 
+def test_pipeline_ra_directory_and_event_same_club_are_one_venue(session):
+    # cenario RA: venue de DIRETORIO (/clubs/1) + evento cujo venue embutido tem a
+    # MESMA url de clube, mas o EVENTO tem url propria (/events/1), e sem geo.
+    # A evidencia do venue usa a url ESTAVEL do clube -> 1 venue (nao fragmenta 1->N).
+    from datetime import datetime, timezone
+
+    from nightlife.ingestion.base import RawEvent
+
+    directory = RawVenue(name="Fugaz Bar", source_type="ra",
+                         source_url="https://ra.co/clubs/1", category="nightclub")
+    ev_venue = RawVenue(name="Fugaz Bar", source_type="ra",
+                        source_url="https://ra.co/clubs/1", category="nightclub")
+    rev = RawEvent(name="Festa no Fugaz", source_type="ra",
+                   starts_at=datetime(2099, 6, 14, 2, 0, tzinfo=timezone.utc),
+                   venue=ev_venue, source_url="https://ra.co/events/1", raw_payload="{}")
+    run_ingestion(session, MockSource([directory], [], events=[rev]), reference=REF)
+    session.flush()
+
+    venues = session.scalars(select(Venue)).all()
+    assert len(venues) == 1                            # diretorio + evento = MESMO venue
+    e = session.scalars(select(Event)).one()
+    assert e.venue_id == venues[0].id                  # evento ancorado no venue do diretorio
+
+
 def test_pipeline_anchors_by_venue_name_without_creating(session):
     from datetime import datetime, timezone
 

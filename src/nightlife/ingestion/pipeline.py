@@ -107,7 +107,11 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
                     session,
                     VenueInput(name=rev.venue.name, lat=rev.venue.lat, lng=rev.venue.lng,
                                address=rev.venue.address, category=rev.venue.category),
-                    SourceInfo(source_type=rev.source_type, source_url=rev.source_url,
+                    # URL ESTAVEL do venue (ex.: RA /clubs/ID), nao a do evento — senao
+                    # cada evento vira um venue novo (a identidade por source_url do
+                    # upsert_venue nunca reagrupa). No-op p/ Sympla (URLs coincidem).
+                    SourceInfo(source_type=rev.source_type,
+                               source_url=rev.venue.source_url or rev.source_url,
                                raw_payload=rev.raw_payload),
                     reference=reference,
                 )
