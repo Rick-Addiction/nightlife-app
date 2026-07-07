@@ -52,8 +52,12 @@ class PlacesClient:
         except (httpx.HTTPError, ValueError):
             return []
 
+        if not isinstance(data, dict):
+            return []  # resposta estrutural estranha nao aborta o run inteiro
         out: list[PlaceResult] = []
         for p in data.get("places", []):
+            if not isinstance(p, dict):
+                continue
             loc = p.get("location") or {}
             pid, lat_, lng_ = p.get("id"), loc.get("latitude"), loc.get("longitude")
             if not pid or lat_ is None or lng_ is None:

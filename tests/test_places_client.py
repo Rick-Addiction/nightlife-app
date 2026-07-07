@@ -57,6 +57,16 @@ def test_resposta_de_erro_json_vira_lista_vazia():
     assert res == []
 
 
+def test_resposta_estrutural_estranha_nao_estoura():
+    # data nao-dict, ou um place nao-dict: nao pode estourar AttributeError (o
+    # generator do PlacesSource propagaria e abortaria o run inteiro)
+    assert _client(["nao", "e", "dict"]).search_nearby(-23.5, -46.6, 1000, "night_club") == []
+    payload = {"places": ["string_solta", {"id": "PID9", "location": {"latitude": -23.5, "longitude": -46.6},
+                                           "displayName": {"text": "Ok"}}]}
+    res = _client(payload).search_nearby(-23.5, -46.6, 1000, "night_club")
+    assert [r.place_id for r in res] == ["PID9"]  # o nao-dict e pulado, o valido entra
+
+
 def test_reusa_um_unico_client(monkeypatch):
     # regressao Errno 24: um Client por PlacesClient, nao um por chamada
     constructed = []

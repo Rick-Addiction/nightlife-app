@@ -46,6 +46,8 @@ def main() -> None:
         print(f"DB: {total} venues")
         if run.errors:
             print("erros:\n" + run.errors[:2000])
+        if run.status == "error":
+            sys.exit(1)  # scriptavel: falha do run vira exit code
 
 
 if __name__ == "__main__":
