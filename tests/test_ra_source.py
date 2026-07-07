@@ -132,3 +132,11 @@ def test_ra_source_venues_busca_diretorio(monkeypatch):
     assert captured["l"] == 20              # quirk do RA: limit<=20 traz os 684
     assert captured["a"] == 400             # SP
     assert [v.name for v in vs] == ["D-EDGE"]
+
+
+def test_ra_source_venues_best_effort_em_falha(monkeypatch):
+    # falha ao buscar o diretorio NAO propaga (eventos, o produto core, seguem)
+    def boom(url, **kw):
+        raise ra_source.httpx.ConnectError("rede caiu")
+    monkeypatch.setattr(ra_source.httpx, "post", boom)
+    assert ra_source.RASource().venues() == []

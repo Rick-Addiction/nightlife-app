@@ -8,6 +8,7 @@ dedup c/ OSM ou do Google Places depois."""
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -15,6 +16,8 @@ import httpx
 
 from ..extraction.base import parse_iso
 from .base import RawEvent, RawVenue
+
+_log = logging.getLogger(__name__)
 
 RA_ENDPOINT = "https://ra.co/graphql"
 SP_AREA_ID = 400  # area(areaUrlName="saopaulo", countryUrlCode="br") -> id 400
@@ -129,16 +132,23 @@ class RASource:
         self._timeout = timeout
 
     def venues(self) -> list[RawVenue]:
-        resp = httpx.post(
-            self._endpoint,
-            json={"query": _VENUES_QUERY, "variables": {
-                "a": self._area_id, "o": "ALPHABETICAL", "l": _VENUE_DIR_LIMIT}},
-            headers={"User-Agent": _USER_AGENT, "Content-Type": "application/json",
-                     "Referer": "https://ra.co/"},
-            timeout=self._timeout,
-        )
-        resp.raise_for_status()
-        return parse_ra_venues(resp.json())
+        """Diretorio de venues de SP. BEST-EFFORT: uma falha aqui (RA fora/muda)
+        retorna [] e NAO derruba a ingestao de eventos (o diretorio e suplementar;
+        os eventos sao o produto core). events() continua propagando erro."""
+        try:
+            resp = httpx.post(
+                self._endpoint,
+                json={"query": _VENUES_QUERY, "variables": {
+                    "a": self._area_id, "o": "ALPHABETICAL", "l": _VENUE_DIR_LIMIT}},
+                headers={"User-Agent": _USER_AGENT, "Content-Type": "application/json",
+                         "Referer": "https://ra.co/"},
+                timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            return parse_ra_venues(resp.json())
+        except Exception as exc:  # noqa: BLE001 — best-effort; eventos seguem
+            _log.warning("RA diretorio de venues falhou (%s) — seguindo sem diretorio", exc)
+            return []
 
     def event_pages(self):
         return []
