@@ -12,7 +12,8 @@ from ..models import Event, IgProfileState, Organizer, Venue
 
 
 def handles_to_scrape(session: Session, *, pause_threshold: int = 3) -> list[str]:
-    """Handles a varrer: handles de venues RELEVANT (nightclub/com-evento/monitorado)
+    """Handles a varrer: handles de venues RELEVANT (com-evento/monitorado, ou
+    nightclub vivo — aqui sempre com_contact=True pois todas tem instagram)
     uniao com os de organizers, menos platform-handles e menos os pausados."""
     venues = session.scalars(select(Venue).where(Venue.instagram.is_not(None))).all()
     with_events = set(session.scalars(
@@ -20,7 +21,8 @@ def handles_to_scrape(session: Session, *, pause_threshold: int = 3) -> list[str
     ).all())
     vhandles = {
         v.instagram for v in venues
-        if venue_relevance(v.name, v.category, v.id in with_events, v.is_monitored) == "relevant"
+        if venue_relevance(v.name, v.category, v.id in with_events, v.is_monitored,
+                           has_contact=True) == "relevant"
     }
     ohandles = set(session.scalars(
         select(Organizer.instagram).where(Organizer.instagram.is_not(None))

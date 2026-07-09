@@ -21,10 +21,23 @@ def test_is_platform_handle():
     assert not is_platform_handle(None)
 
 
-def test_venue_relevance():
-    assert venue_relevance("Lab Club", "nightclub", False, False) == "relevant"
-    assert venue_relevance("Buffet X", "nightclub", True, True) == "blocked"   # precedencia
-    assert venue_relevance("Espaco Y", "events_venue", False, False) == "dormant"
-    assert venue_relevance("Espaco Y", "events_venue", True, False) == "relevant"  # tem evento
-    assert venue_relevance("Espaco Z", "events_venue", False, True) == "relevant"  # monitorado
+def test_venue_relevance_v2():
+    # blocked tem precedencia sobre tudo
+    assert venue_relevance("Buffet X", "nightclub", True, True) == "blocked"
+    assert venue_relevance("Selva Club", "nightclub", True, True,
+                           business_status="CLOSED_PERMANENTLY") == "blocked"
+    # atividade vence sempre (qualquer categoria)
+    assert venue_relevance("Espaco Y", "events_venue", True, False) == "relevant"
+    assert venue_relevance("Espaco Z", "events_venue", False, True) == "relevant"
+    # nightclub precisa estar VIVO: so-categoria nao basta mais (fantasmas do RA)
+    assert venue_relevance("Lab Club", "nightclub", False, False) == "dormant"
+    assert venue_relevance("Lab Club", "nightclub", False, False,
+                           places_verified=True) == "relevant"
+    assert venue_relevance("Lab Club", "nightclub", False, False,
+                           source_count=2) == "relevant"
+    assert venue_relevance("Lab Club", "nightclub", False, False,
+                           has_contact=True) == "relevant"
+    # nao-nightclub vivo mas sem evento continua dormant (bar verificado nao pina)
+    assert venue_relevance("Bar Vivo", "bar", False, False,
+                           places_verified=True) == "dormant"
     assert venue_relevance("Sem Cat", None, False, False) == "dormant"

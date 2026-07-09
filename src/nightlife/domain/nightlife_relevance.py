@@ -1,8 +1,10 @@
 # src/nightlife/domain/nightlife_relevance.py
 """Relevancia de venue: 'isto e vida noturna?' (spec §3). Puro, sem DB.
 
-blocked (buffet/festa-infantil, nunca) tem precedencia; relevant (nightclub, ou
-com evento, ou monitorado); dormant (o resto — events_venue/sem-cat sem evento)."""
+v2 (Ciclo A): blocked (buffet/festa-infantil, ou fechado em definitivo pelo
+Google) tem precedencia; relevant (com evento, ou monitorado, ou nightclub
+VIVO — verificado pelo Places, 2+ fontes ou com contato); dormant (o resto,
+incluindo nightclub do diretorio do RA sem nenhum sinal de vida)."""
 from __future__ import annotations
 
 import unicodedata
@@ -36,10 +38,20 @@ def is_platform_handle(handle: str | None) -> bool:
 
 
 def venue_relevance(name: str | None, category: str | None,
-                    has_events: bool, is_monitored: bool) -> str:
-    """'blocked' | 'relevant' | 'dormant'. blocked tem precedencia sobre tudo."""
-    if is_buffet_name(name):
+                    has_events: bool, is_monitored: bool, *,
+                    places_verified: bool = False,
+                    business_status: str | None = None,
+                    source_count: int = 1,
+                    has_contact: bool = False) -> str:
+    """'blocked' | 'relevant' | 'dormant'. v2 (Ciclo A): nightclub so e relevant
+    se VIVO (verificado pelo Places, 2+ fontes ou contato) — o diretorio do RA
+    guarda clubes historicos, entao categoria sozinha nao prova existencia.
+    blocked (buffet, ou fechado em definitivo pelo Google) tem precedencia."""
+    if is_buffet_name(name) or business_status == "CLOSED_PERMANENTLY":
         return "blocked"
-    if category == "nightclub" or has_events or is_monitored:
+    if has_events or is_monitored:
+        return "relevant"           # atividade vence sempre
+    alive = places_verified or source_count >= 2 or has_contact
+    if category == "nightclub" and alive:
         return "relevant"
     return "dormant"
