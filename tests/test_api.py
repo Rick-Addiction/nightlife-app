@@ -225,3 +225,22 @@ def test_venues_v2_esconde_fantasma_e_mostra_verificado(session):
         assert "Fantasma RA" in all_names        # escape hatch preservado
     finally:
         app.dependency_overrides.clear()
+
+
+def test_venues_ig_stale_esconde_so_contato(session):
+    from datetime import timedelta, timezone as tz
+    velho = datetime.now(tz.utc) - timedelta(days=400)
+    parado = Venue(name="IG Parado", category="nightclub", lat=-23.5, lng=-46.6,
+                   status="operational", confidence=30, instagram="parado",
+                   ig_last_post_at=velho)
+    vivo = Venue(name="IG Vivo", category="nightclub", lat=-23.5, lng=-46.6,
+                 status="operational", confidence=30, instagram="vivo",
+                 ig_last_post_at=datetime.now(tz.utc) - timedelta(days=10))
+    session.add_all([parado, vivo])
+    session.flush()
+    client = _client(session)
+    try:
+        names = [x["name"] for x in client.get("/venues").json()]
+        assert "IG Vivo" in names and "IG Parado" not in names
+    finally:
+        app.dependency_overrides.clear()
