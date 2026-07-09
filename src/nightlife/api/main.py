@@ -4,12 +4,12 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 
 from fastapi import Depends, FastAPI, HTTPException
-from sqlalchemy import select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
 from ..domain.freshness import freshness_factor
 from ..domain.nightlife_relevance import is_buffet_name, venue_relevance
-from ..models import Event, Venue
+from ..models import Event, Venue, VenueSource
 from .deps import get_session
 from .schemas import EventOut, VenueOut
 
@@ -53,9 +53,23 @@ def list_venues(
         with_events = set(session.scalars(
             select(Event.venue_id).where(Event.venue_id.is_not(None))
         ).all())
+        source_counts = dict(session.execute(
+            select(VenueSource.venue_id, func.count(distinct(VenueSource.source_type)))
+            .group_by(VenueSource.venue_id)
+        ).all())
+        gp_ids = set(session.scalars(
+            select(distinct(VenueSource.venue_id))
+            .where(VenueSource.source_type == "google_places")
+        ).all())
         venues = [
             v for v in venues
-            if venue_relevance(v.name, v.category, v.id in with_events, v.is_monitored) == "relevant"
+            if venue_relevance(
+                v.name, v.category, v.id in with_events, v.is_monitored,
+                places_verified=v.id in gp_ids,
+                business_status=v.business_status,
+                source_count=source_counts.get(v.id, 0),
+                has_contact=bool(v.instagram or v.website),
+            ) == "relevant"
         ]
     now = datetime.now(timezone.utc)
     outs = [_with_effective(VenueOut, v, now) for v in venues]
