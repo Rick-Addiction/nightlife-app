@@ -83,3 +83,30 @@ def test_reusa_um_unico_client(monkeypatch):
     c.search_nearby(-23.5, -46.6, 1000, "night_club")
     c.search_nearby(-23.5, -46.6, 1000, "dance_hall")
     assert len(constructed) == 1
+
+
+class _RecordingClient:
+    """Captura o body enviado, devolve payload fixo."""
+    def __init__(self, payload):
+        self.payload = payload
+        self.last_json = None
+
+    def post(self, url, headers=None, json=None):
+        self.last_json = json
+        return _fake_response(self.payload)
+
+
+def test_nearby_manda_language_code_pt_br():
+    rec = _RecordingClient({"places": []})
+    PlacesClient("KEY", client=rec).search_nearby(-23.5, -46.6, 1000, "night_club")
+    assert rec.last_json["languageCode"] == "pt-BR"
+
+
+def test_nearby_parseia_business_status():
+    payload = {"places": [
+        {"id": "PID1", "displayName": {"text": "Selva Club"},
+         "location": {"latitude": -23.55, "longitude": -46.65},
+         "primaryType": "night_club", "businessStatus": "OPERATIONAL"},
+    ]}
+    res = _client(payload).search_nearby(-23.55, -46.65, 1000, "night_club")
+    assert res[0].business_status == "OPERATIONAL"

@@ -11,7 +11,7 @@ import httpx
 
 _ENDPOINT = "https://places.googleapis.com/v1/places:searchNearby"
 _FIELD_MASK = ("places.id,places.displayName,places.location,"
-               "places.formattedAddress,places.primaryType")
+               "places.formattedAddress,places.primaryType,places.businessStatus")
 _TIMEOUT = 20.0
 
 
@@ -23,6 +23,7 @@ class PlaceResult:
     lng: float
     address: str | None
     primary_type: str | None
+    business_status: str | None = None
 
 
 class PlacesClient:
@@ -39,6 +40,8 @@ class PlacesClient:
             "locationRestriction": {"circle": {
                 "center": {"latitude": lat, "longitude": lng},
                 "radius": float(radius)}},
+            # sem isso a API serve o indice EN com alias VELHO (caso Selva/Inferno)
+            "languageCode": "pt-BR",
         }
         headers = {
             "Content-Type": "application/json",
@@ -68,5 +71,6 @@ class PlacesClient:
                 lat=lat_, lng=lng_,
                 address=p.get("formattedAddress"),
                 primary_type=p.get("primaryType"),
+                business_status=p.get("businessStatus"),
             ))
         return out
