@@ -1,6 +1,6 @@
 import httpx
 
-from nightlife.ingestion.places_client import PlacesClient, PlaceResult
+from nightlife.ingestion.places_client import PlacesClient, PlaceResult, PlaceDetails
 
 
 def _fake_response(payload):
@@ -110,3 +110,42 @@ def test_nearby_parseia_business_status():
     ]}
     res = _client(payload).search_nearby(-23.55, -46.65, 1000, "night_club")
     assert res[0].business_status == "OPERATIONAL"
+
+
+class _FakeGetClient:
+    """Client com .get pro Details; devolve payload fixo (ou levanta)."""
+    def __init__(self, payload=None, raises=None):
+        self.payload = payload
+        self.raises = raises
+        self.last_params = None
+
+    def get(self, url, headers=None, params=None):
+        self.last_params = params
+        if self.raises is not None:
+            raise self.raises
+        return _fake_response(self.payload)
+
+
+def test_place_details_parseia_nome_status_site():
+    payload = {"id": "PID1", "displayName": {"text": "Selva Club", "languageCode": "pt"},
+               "businessStatus": "OPERATIONAL", "websiteUri": "https://selva.club/"}
+    fake = _FakeGetClient(payload)
+    det = PlacesClient("KEY", client=fake).place_details("PID1")
+    assert det == PlaceDetails(name="Selva Club", business_status="OPERATIONAL",
+                               website="https://selva.club/")
+    assert fake.last_params["languageCode"] == "pt-BR"
+
+
+def test_place_details_sem_nome_vira_none():
+    det = PlacesClient("KEY", client=_FakeGetClient({"id": "PID1"})).place_details("PID1")
+    assert det is None
+
+
+def test_place_details_erro_vira_none():
+    det = PlacesClient("KEY", client=_FakeGetClient(raises=httpx.ConnectError("x"))).place_details("PID1")
+    assert det is None
+
+
+def test_place_details_campos_opcionais_ausentes():
+    det = PlacesClient("KEY", client=_FakeGetClient({"displayName": {"text": "X"}})).place_details("PID1")
+    assert det == PlaceDetails(name="X", business_status=None, website=None)

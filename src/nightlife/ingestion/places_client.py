@@ -26,6 +26,17 @@ class PlaceResult:
     business_status: str | None = None
 
 
+_DETAILS_ENDPOINT = "https://places.googleapis.com/v1/places/{place_id}"
+_DETAILS_FIELD_MASK = "id,displayName,businessStatus,websiteUri"
+
+
+@dataclass(frozen=True)
+class PlaceDetails:
+    name: str
+    business_status: str | None
+    website: str | None
+
+
 class PlacesClient:
     def __init__(self, api_key: str, client: httpx.Client | None = None) -> None:
         self._key = api_key
@@ -74,3 +85,22 @@ class PlacesClient:
                 business_status=p.get("businessStatus"),
             ))
         return out
+
+    def place_details(self, place_id: str) -> PlaceDetails | None:
+        """Nome canonico pt-BR + businessStatus + site oficial de um place_id.
+        None = erro retentavel (o chamador NAO deve gravar enriched_at)."""
+        headers = {"X-Goog-Api-Key": self._key, "X-Goog-FieldMask": _DETAILS_FIELD_MASK}
+        try:
+            resp = self._client.get(_DETAILS_ENDPOINT.format(place_id=place_id),
+                                    headers=headers, params={"languageCode": "pt-BR"})
+            resp.raise_for_status()
+            data = resp.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        if not isinstance(data, dict):
+            return None
+        name = (data.get("displayName") or {}).get("text")
+        if not name:
+            return None  # sem nome nao ha o que enriquecer
+        return PlaceDetails(name=name, business_status=data.get("businessStatus"),
+                            website=data.get("websiteUri"))
