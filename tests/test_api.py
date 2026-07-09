@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from nightlife.api.deps import get_session
 from nightlife.api.main import app
-from nightlife.models import Event, Venue
+from nightlife.models import Event, Venue, VenueSource
 
 SP = ZoneInfo("America/Sao_Paulo")
 
@@ -123,8 +123,8 @@ def test_effective_confidence_decays_with_staleness(session):
 
 
 def test_venues_sorted_by_effective_confidence_desc(session):
-    a = Venue(name="Fraco", status="operational", confidence=30, category="nightclub")
-    b = Venue(name="Forte", status="operational", confidence=80, category="nightclub")
+    a = Venue(name="Fraco", status="operational", confidence=30, category="nightclub", is_monitored=True)
+    b = Venue(name="Forte", status="operational", confidence=80, category="nightclub", is_monitored=True)
     session.add_all([a, b])
     session.flush()
     client = _client(session)
@@ -157,7 +157,7 @@ def test_events_default_hides_past(session):
 
 def test_venues_esconde_dormant_e_buffet_por_padrao(session):
     session.add_all([
-        Venue(name="Club Real", category="nightclub", status="operational", confidence=60),
+        Venue(name="Club Real", category="nightclub", status="operational", confidence=60, instagram="clubreal"),
         Venue(name="Espaco Dormente", category="events_venue", status="operational", confidence=60),
         Venue(name="Buffet Kids", category="events_venue", status="operational", confidence=60),
     ])
@@ -203,5 +203,25 @@ def test_events_esconde_evento_de_venue_buffet(session):
         assert "Rave" in names and "Aniversario" not in names   # evento de buffet escondido
         all_names = [x["name"] for x in client.get("/events", params={"include_all": "true"}).json()]
         assert "Aniversario" in all_names
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_venues_v2_esconde_fantasma_e_mostra_verificado(session):
+    fantasma = Venue(name="Fantasma RA", category="nightclub", lat=-23.5, lng=-46.6,
+                     status="unverified", confidence=0)
+    verificado = Venue(name="Selva Club", category="nightclub", lat=-23.55, lng=-46.65,
+                       status="operational", confidence=30)
+    session.add_all([fantasma, verificado])
+    session.flush()
+    session.add(VenueSource(venue_id=fantasma.id, source_type="ra", source_url="u1"))
+    session.add(VenueSource(venue_id=verificado.id, source_type="google_places", source_url="P1"))
+    session.flush()
+    client = _client(session)
+    try:
+        names = [x["name"] for x in client.get("/venues").json()]
+        assert "Selva Club" in names and "Fantasma RA" not in names
+        all_names = [x["name"] for x in client.get("/venues", params={"include_all": "true"}).json()]
+        assert "Fantasma RA" in all_names        # escape hatch preservado
     finally:
         app.dependency_overrides.clear()

@@ -22,6 +22,8 @@ class Venue(Base):
     instagram: Mapped[str | None] = mapped_column(String(200), default=None)
     website: Mapped[str | None] = mapped_column(String(500), default=None)
     status: Mapped[str] = mapped_column(String(30), default="unverified")
+    business_status: Mapped[str | None] = mapped_column(String(30), default=None)  # do Places Details
+    enriched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     confidence: Mapped[int] = mapped_column(Integer, default=0)
     is_monitored: Mapped[bool] = mapped_column(default=False)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
