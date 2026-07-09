@@ -161,3 +161,47 @@ def test_discover_organizer_descarta_platform_handle(session):
     session.flush()
     assert n == 0
     assert org.instagram is None
+
+
+def test_discover_venue_via_venue_website(session):
+    # site oficial JA no banco (ex.: websiteUri do Places) e fonte de handle
+    v = Venue(name="Selva Club", website="https://selva.club/")
+    session.add(v)
+    session.flush()
+    html = '<a href="https://www.instagram.com/selva.011/">IG</a>'
+    fetched = []
+    def fetch(url):
+        fetched.append(url)
+        return html
+    n = discover_venue_handles(session, osm_tags_by_url={}, fetch=fetch)
+    assert n == 1 and v.instagram == "selva.011"
+    assert fetched == ["https://selva.club/"]
+
+
+def test_discover_venue_website_que_ja_e_perfil_de_ig(session):
+    # muitos clubes usam o IG como site: websiteUri = instagram.com/handle
+    # -> handle de graca, SEM fetch
+    v = Venue(name="Bar do X", website="https://www.instagram.com/bardox/")
+    session.add(v)
+    session.flush()
+    def fetch(url):
+        raise AssertionError("nao deveria fazer fetch")
+    n = discover_venue_handles(session, osm_tags_by_url={}, fetch=fetch)
+    assert n == 1 and v.instagram == "bardox"
+
+
+def test_discover_venue_tag_osm_vence_o_site_do_banco(session):
+    # com contact:instagram na tag OSM, nem olha o venue.website
+    from nightlife.persistence.evidence import record_venue_evidence
+    from nightlife.persistence.inputs import SourceInfo
+    v = Venue(name="Club Y", website="https://site-que-nao-deve-ser-buscado.com")
+    session.add(v)
+    session.flush()
+    record_venue_evidence(session, v.id, SourceInfo(
+        source_type="osm", source_url="https://osm.org/node/9"), contribution=20)
+    def fetch(url):
+        raise AssertionError("nao deveria fazer fetch")
+    n = discover_venue_handles(
+        session, osm_tags_by_url={"https://osm.org/node/9": {"contact:instagram": "clubey"}},
+        fetch=fetch)
+    assert n == 1 and v.instagram == "clubey"

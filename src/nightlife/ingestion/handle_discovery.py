@@ -64,11 +64,16 @@ def discover_venue_handles(
         website = tags.get("website") or tags.get("contact:website")
         if website and not v.website:
             v.website = website
-        if handle is None and website and canonical_handle(website) is None:
+        # site oficial ja no banco (ex.: websiteUri do Places, Ciclo A) tambem
+        # e fonte; a tag OSM tem precedencia quando existe
+        fetch_url = website or v.website
+        if handle is None and fetch_url:
+            handle = canonical_handle(fetch_url)   # site que JA e um perfil de IG
+        if handle is None and fetch_url:
             try:
-                handle = handle_from_html(fetch(website))
+                handle = handle_from_html(fetch(fetch_url))
             except Exception as exc:  # noqa: BLE001 — fetch best-effort, nao fatal
-                _log.warning("fetch de %s falhou: %s", website, exc)
+                _log.warning("fetch de %s falhou: %s", fetch_url, exc)
         if handle and not is_platform_handle(handle):
             v.instagram = handle
             count += 1
