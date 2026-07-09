@@ -16,6 +16,15 @@ def _venue(session, name, **kw):
     return v
 
 
+def test_merge_preserva_is_monitored_do_loser(session):
+    # flag setada pelo usuario nao pode se perder quando o monitorado e o loser
+    survivor = _venue(session, "Selva Club", lat=-23.55, lng=-46.65, is_monitored=False)
+    loser = _venue(session, "Inferno Club", lat=-23.551, lng=-46.651, is_monitored=True)
+    merge_venues(session, survivor, loser, reference=REF)
+    session.flush()
+    assert survivor.is_monitored is True
+
+
 def test_merge_move_evento_e_source_e_apaga_loser(session):
     survivor = _venue(session, "Mundo Pensante", lat=-23.55, lng=-46.63)
     loser = _venue(session, "Mundo Pensante", lat=-23.551, lng=-46.631)

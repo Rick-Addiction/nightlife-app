@@ -6,7 +6,9 @@ via enriched_at. Sob demanda: python -m nightlife.enrich_places
 """
 from __future__ import annotations
 
+import re
 import sys
+import unicodedata
 from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import distinct, or_, select
@@ -61,10 +63,12 @@ def enrich_all(session: Session, client, *, now: datetime, max_age_days: int = 3
         if det.website and det.website != venue.website:
             venue.website = det.website
             out["websites_set"] += 1
-        venue.business_status = det.business_status
-        mapped = _STATUS_MAP.get(det.business_status or "")
-        if mapped:
-            venue.status = mapped
+        if det.business_status is not None:
+            # Details sem businessStatus nao ANULA um status ja conhecido
+            venue.business_status = det.business_status
+            mapped = _STATUS_MAP.get(det.business_status)
+            if mapped:
+                venue.status = mapped
         if det.business_status == "CLOSED_PERMANENTLY":
             out["closed_perm"] += 1
         elif det.business_status == "CLOSED_TEMPORARILY":
@@ -82,20 +86,66 @@ def _sources_by_venue(session: Session) -> dict[int, set[str]]:
     return out
 
 
+_STREET_TYPES = {"r", "rua", "av", "avenida", "al", "alameda", "tv", "travessa",
+                 "pc", "pca", "praca", "lgo", "largo", "estr", "estrada", "rod", "rodovia"}
+
+
+def _street(address: str | None) -> str:
+    """Nome da rua de um endereco livre (tokens antes do primeiro numero, sem o
+    tipo de logradouro), normalizado. '' quando nao extraivel."""
+    if not address:
+        return ""
+    s = unicodedata.normalize("NFKD", address).encode("ascii", "ignore").decode().lower()
+    seg = re.split(r"[;,]", s)[0]
+    toks: list[str] = []
+    for tok in seg.split():
+        tok = tok.strip(".")
+        if any(ch.isdigit() for ch in tok):
+            break
+        if tok:
+            toks.append(tok)
+    if toks and toks[0] in _STREET_TYPES:
+        toks = toks[1:]
+    return " ".join(toks)
+
+
+def _streets_differ(a: str | None, b: str | None) -> bool:
+    """True so quando AMBOS tem rua extraivel e elas divergem (enderecos em
+    ruas diferentes = lugares diferentes, por mais que os nomes se paream)."""
+    sa, sb = _street(a), _street(b)
+    return bool(sa) and bool(sb) and sa != sb and sa not in sb and sb not in sa
+
+
+def _queue_review(session: Session, a: Venue, b: Venue, sim: float) -> None:
+    """Enfileira o par pra revisao humana (sem duplicar par existente)."""
+    exists = session.scalars(select(DedupeCandidate).where(
+        DedupeCandidate.kind == "venue",
+        or_((DedupeCandidate.a_id == a.id) & (DedupeCandidate.b_id == b.id),
+            (DedupeCandidate.a_id == b.id) & (DedupeCandidate.b_id == a.id)),
+    )).first()
+    if exists is None:
+        session.add(DedupeCandidate(kind="venue", a_id=a.id, b_id=b.id,
+                                    similarity_score=sim, decision="review"))
+
+
 def reconcile_venues(session: Session, *, reference: date) -> dict:
-    """Duas regras, nesta ordem. 1) Consolidacao: par <=30m com score >=0.70
-    (name_similarity + boost geo 0.1, semantica do match_venue) e >=1 lado
-    verificado -> merge (mata pins duplicados tipo 'Kat Klub' vs 'Kat Klub Sao
-    Paulo'). 2) Supersessao: fantasma (1 fonte ra/osm, 0 eventos) com exatamente
-    1 verificado <=30m -> funde nele (Inferno->Selva, Beco->Kat Klub);
-    ambiguidade -> fila de review. Merges via merge_venues (auditavel)."""
+    """Duas regras, nesta ordem. 1) Consolidacao: par <=30m com name_similarity
+    CRUA >= 0.70 e >=1 lado verificado -> merge; a faixa 0.60-0.70 e AMBIGUA
+    (Kat Klub 0.615 = mesmo clube; Funilaria/Redoma 0.621 = clubes diferentes,
+    medido em producao) -> fila de review. Vetos que tambem mandam pra review:
+    dois place_ids distintos (o Google diz que sao dois negocios) e ruas
+    diferentes nos enderecos. 2) Supersessao: fantasma (1 fonte ra/osm, 0
+    eventos) com exatamente 1 verificado <=30m e SEM conflito de rua -> funde
+    nele (Inferno->Selva, Beco->Kat Klub); ambiguidade -> review. Merge e
+    delete fisico: na duvida, review. Tudo via merge_venues (auditavel)."""
     out = {"consolidated": 0, "superseded": 0, "review_queued": 0, "untouched": 0}
 
     def _snapshot():
         srcs = _sources_by_venue(session)
         with_ev = set(session.scalars(
             select(distinct(Event.venue_id)).where(Event.venue_id.is_not(None))))
-        venues = session.scalars(select(Venue).where(Venue.lat.is_not(None))).all()
+        venues = session.scalars(select(Venue).where(
+            Venue.lat.is_not(None), Venue.lng.is_not(None))).all()
         return venues, srcs, with_ev
 
     def _verified(v: Venue, srcs: dict[int, set[str]]) -> bool:
@@ -107,6 +157,7 @@ def reconcile_venues(session: Session, *, reference: date) -> dict:
 
     # regra 1: consolidacao por nome
     venues, srcs, _ = _snapshot()
+    pids = _place_ids_by_venue(session)
     gone: set[int] = set()
     for i, a in enumerate(venues):
         if a.id in gone:
@@ -118,9 +169,13 @@ def reconcile_venues(session: Session, *, reference: date) -> dict:
                 continue
             if _dist_km(a, b) > 0.03:
                 continue
-            # score com o MESMO boost geo do match_venue (par <=30m): sem ele,
-            # "Kat Klub Sao Paulo" vs "Kat Klub" da 0.615 cru e nao consolidaria
-            if min(1.0, name_similarity(a.name, b.name) + 0.1) < 0.70:
+            sim = name_similarity(a.name, b.name)
+            if sim < 0.60:
+                continue
+            distinct_pids = (a.id in pids and b.id in pids and pids[a.id] != pids[b.id])
+            if sim < 0.70 or distinct_pids or _streets_differ(a.address, b.address):
+                _queue_review(session, a, b, sim)
+                out["review_queued"] += 1
                 continue
             survivor, loser = _pick_survivor(a, b)
             merge_venues(session, survivor, loser, reference=reference)
@@ -142,7 +197,14 @@ def reconcile_venues(session: Session, *, reference: date) -> dict:
                   if v.id != g.id and v.id not in gone
                   and _verified(v, srcs) and _dist_km(g, v) <= 0.03]
         if len(near30) == 1:
-            merge_venues(session, near30[0], g, reference=reference)
+            cand = near30[0]
+            if _streets_differ(g.address, cand.address):
+                # enderecos em ruas diferentes: vizinho vivo, nao fantasma
+                # renomeado (caso Funilaria/Redoma) -> review, nao merge
+                _queue_review(session, g, cand, name_similarity(g.name, cand.name))
+                out["review_queued"] += 1
+                continue
+            merge_venues(session, cand, g, reference=reference)
             gone.add(g.id)
             out["superseded"] += 1
             continue
@@ -151,16 +213,7 @@ def reconcile_venues(session: Session, *, reference: date) -> dict:
                   and _verified(v, srcs) and _dist_km(g, v) <= 0.06]
         if len(near30) >= 2 or near60:
             other = (near30 or near60)[0]
-            exists = session.scalars(select(DedupeCandidate).where(
-                DedupeCandidate.kind == "venue",
-                or_((DedupeCandidate.a_id == g.id) & (DedupeCandidate.b_id == other.id),
-                    (DedupeCandidate.a_id == other.id) & (DedupeCandidate.b_id == g.id)),
-            )).first()
-            if exists is None:
-                session.add(DedupeCandidate(
-                    kind="venue", a_id=g.id, b_id=other.id,
-                    similarity_score=name_similarity(g.name, other.name),
-                    decision="review"))
+            _queue_review(session, g, other, name_similarity(g.name, other.name))
             out["review_queued"] += 1
         else:
             out["untouched"] += 1
@@ -186,6 +239,9 @@ def main() -> None:
     with SessionLocal() as session:
         client = PlacesClient(GOOGLE_MAPS_API_KEY)
         out = enrich_all(session, client, now=now)
+        # commit intermediario: o enrichment e PAGO (Details); um erro no
+        # reconcile nao pode rolar back os enriched_at (senao re-paga tudo)
+        session.commit()
         rec = reconcile_venues(session, reference=now.date())
         session.commit()
         print("enrich:", out)

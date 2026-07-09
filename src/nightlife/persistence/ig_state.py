@@ -22,7 +22,8 @@ def handles_to_scrape(session: Session, *, pause_threshold: int = 3) -> list[str
     vhandles = {
         v.instagram for v in venues
         if venue_relevance(v.name, v.category, v.id in with_events, v.is_monitored,
-                           has_contact=True) == "relevant"
+                           has_contact=True,
+                           business_status=v.business_status) == "relevant"
     }
     ohandles = set(session.scalars(
         select(Organizer.instagram).where(Organizer.instagram.is_not(None))

@@ -8,8 +8,9 @@ from nightlife.enrich_places import reconcile_venues
 REF = date(2026, 7, 9)
 
 
-def _venue(session, name, lat, lng, sources=(), confidence=0, with_event=False):
-    v = Venue(name=name, lat=lat, lng=lng, category="nightclub", confidence=confidence)
+def _venue(session, name, lat, lng, sources=(), confidence=0, with_event=False, address=None):
+    v = Venue(name=name, lat=lat, lng=lng, category="nightclub", confidence=confidence,
+              address=address)
     session.add(v)
     session.flush()
     for stype, url in sources:
@@ -21,8 +22,9 @@ def _venue(session, name, lat, lng, sources=(), confidence=0, with_event=False):
 
 
 def test_consolidacao_funde_par_verificado_similar(session):
-    # caso Kat Klub: RA "Kat Klub Sao Paulo" + Places "Kat Klub" a ~10m, 0.615+0.1 >= 0.70
-    ra = _venue(session, "Kat Klub Sao Paulo", -23.55202, -46.65170,
+    # similaridade CRUA >= 0.70 ("Kat Klub SP" vs "Kat Klub" = 0.842), <=30m,
+    # um lado verificado, sem conflito de rua -> funde
+    ra = _venue(session, "Kat Klub SP", -23.55202, -46.65170,
                 sources=[("ra", "https://ra.co/clubs/2")], confidence=40)
     gp = _venue(session, "Kat Klub", -23.55210, -46.65175,
                 sources=[("google_places", "PID_KAT")], confidence=30)
@@ -36,6 +38,50 @@ def test_consolidacao_funde_par_verificado_similar(session):
     assert survivor.id == ra.id                # _pick_survivor: maior confianca
 
 
+def test_consolidacao_faixa_ambigua_vira_review(session):
+    # faixa 0.60-0.70 crua e INDISTINGUIVEL (Kat Klub 0.615 = mesmo clube;
+    # Funilaria/Redoma 0.621 = clubes DIFERENTES, medido em producao)
+    # -> review, nunca auto-merge. with_event: como na producao (o RA Kat Klub
+    # tem evento), o venue nao e fantasma — isola a regra 1 da supersessao.
+    _venue(session, "Kat Klub Sao Paulo", -23.55202, -46.65170,
+           sources=[("ra", "https://ra.co/clubs/2")], confidence=40, with_event=True)
+    _venue(session, "Kat Klub", -23.55210, -46.65175,
+           sources=[("google_places", "PID_KAT")], confidence=30)
+    out = reconcile_venues(session, reference=REF)
+    session.flush()
+    assert out["consolidated"] == 0 and out["review_queued"] >= 1
+    assert session.scalar(select(func.count()).select_from(Venue)) == 2
+    assert session.scalar(select(func.count()).select_from(DedupeCandidate)) == 1
+
+
+def test_consolidacao_dois_place_ids_distintos_vira_review(session):
+    # o Google diz que sao DOIS negocios (place_ids diferentes): 0.714 cru
+    # ("Kibixiga Show" vs "Que Bexiga Show"), mas nunca auto-merge
+    _venue(session, "Kibixiga Show", -23.55000, -46.65000,
+           sources=[("google_places", "PID_A")], confidence=30)
+    _venue(session, "Que Bexiga Show", -23.55005, -46.65005,
+           sources=[("google_places", "PID_B")], confidence=30)
+    out = reconcile_venues(session, reference=REF)
+    session.flush()
+    assert out["consolidated"] == 0 and out["review_queued"] >= 1
+    assert session.scalar(select(func.count()).select_from(Venue)) == 2
+
+
+def test_consolidacao_ruas_diferentes_vira_review(session):
+    # nomes identicos pos-normalizacao (1.0) mas enderecos em RUAS diferentes:
+    # lugares distintos -> review, nao merge
+    _venue(session, "Fugaz Bar", -23.55000, -46.65000,
+           sources=[("ra", "u1")], confidence=20,
+           address="Rua Rui Barbosa, 572; Sao Paulo")
+    _venue(session, "Fugaz Club", -23.55005, -46.65005,
+           sources=[("google_places", "P1")], confidence=30,
+           address="Rua Treze de Maio, 825 - Bela Vista, Sao Paulo")
+    out = reconcile_venues(session, reference=REF)
+    session.flush()
+    assert out["consolidated"] == 0 and out["review_queued"] >= 1
+    assert session.scalar(select(func.count()).select_from(Venue)) == 2
+
+
 def test_consolidacao_ignora_par_sem_lado_verificado(session):
     _venue(session, "Bar Alfa", -23.55, -46.65, sources=[("ra", "u1")])
     _venue(session, "Bar Alfa", -23.5501, -46.6501, sources=[("osm", "u2")])
@@ -45,11 +91,14 @@ def test_consolidacao_ignora_par_sem_lado_verificado(session):
 
 
 def test_supersessao_funde_fantasma_ra_no_verificado(session):
-    # caso Inferno->Selva: nomes DIFERENTES (sim < 0.70), <=30m, fantasma so-RA
+    # caso Inferno->Selva: nomes DIFERENTES (sim < 0.70), <=30m, fantasma so-RA,
+    # MESMA rua nos enderecos (nao dispara o veto)
     selva = _venue(session, "Selva Club", -23.55157, -46.65077,
-                   sources=[("google_places", "PID_SELVA")], confidence=30)
+                   sources=[("google_places", "PID_SELVA")], confidence=30,
+                   address="R. Augusta, 501 - Consolacao, Sao Paulo")
     inferno = _venue(session, "Inferno Club", -23.55170, -46.65072,
-                     sources=[("ra", "https://ra.co/clubs/28883")], confidence=0)
+                     sources=[("ra", "https://ra.co/clubs/28883")], confidence=0,
+                     address="R. Augusta, 501; Sao Paulo, 01305-000; Brazil")
     out = reconcile_venues(session, reference=REF)
     session.flush()
     assert out["superseded"] == 1
@@ -106,6 +155,35 @@ def test_fantasma_com_evento_e_intocado(session):
     out = reconcile_venues(session, reference=REF)
     assert out["superseded"] == 0 and out["review_queued"] == 0
     assert session.scalar(select(func.count()).select_from(Venue)) == 2
+
+
+def test_supersessao_ruas_diferentes_vira_review(session):
+    # caso Funilaria/Redoma (medido em producao): fantasma a 17m de um
+    # verificado, mas em RUA diferente -> vizinho vivo, nao fantasma renomeado
+    # -> review, nao merge
+    _venue(session, "Redoma Bixiga", -23.55000, -46.65000,
+           sources=[("google_places", "P1")], confidence=30,
+           address="R. Treze de Maio, 825 - Bela Vista, Sao Paulo")
+    _venue(session, "Funilaria Bixiga", -23.55015, -46.65005,
+           sources=[("ra", "https://ra.co/clubs/248292")], confidence=0,
+           address="R. Rui Barbosa, 572; Sao Paulo")
+    out = reconcile_venues(session, reference=REF)
+    session.flush()
+    assert out["superseded"] == 0 and out["review_queued"] >= 1
+    assert session.scalar(select(func.count()).select_from(Venue)) == 2
+    # par unico na fila mesmo sendo tocado pelas duas regras
+    assert session.scalar(select(func.count()).select_from(DedupeCandidate)) == 1
+
+
+def test_venue_meio_geocodado_nao_quebra_reconcile(session):
+    # lat sem lng (meia-geocodificacao) nao pode estourar TypeError no haversine
+    v = Venue(name="Meio Geo", lat=-23.55, lng=None, category="nightclub")
+    session.add(v)
+    session.flush()
+    _venue(session, "Normal Club", -23.55000, -46.65000,
+           sources=[("google_places", "P1")], confidence=30)
+    out = reconcile_venues(session, reference=REF)   # nao explode
+    assert out["consolidated"] == 0
 
 
 def test_reconcile_e_idempotente(session):

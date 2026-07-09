@@ -46,6 +46,8 @@ def merge_venues(session: Session, survivor: Venue, loser: Venue, *, reference: 
     survivor.category = survivor.category or loser.category
     survivor.instagram = survivor.instagram or loser.instagram
     survivor.website = survivor.website or loser.website
+    # flag setada pelo usuario nao pode se perder num merge
+    survivor.is_monitored = survivor.is_monitored or loser.is_monitored
 
     # 4. limpa DedupeCandidate que referenciam o loser (antes de apagar)
     for c in session.scalars(

@@ -72,6 +72,18 @@ def test_enrich_erro_nao_grava_enriched_at(session):
     assert v.enriched_at is None                # retenta no proximo run
 
 
+def test_enrich_nao_anula_business_status_quando_details_omite(session):
+    # Details sem businessStatus nao pode APAGAR um status ja conhecido
+    v = _gp_venue(session, "Status Conhecido", "PID_S",
+                  business_status="OPERATIONAL", status="operational")
+    client = FakeDetailsClient({"PID_S": PlaceDetails(
+        name="Status Conhecido", business_status=None, website=None)})
+    enrich_all(session, client, now=NOW)
+    session.flush()
+    assert v.business_status == "OPERATIONAL"
+    assert v.status == "operational"
+
+
 def test_enrich_ignora_venue_sem_place_id(session):
     v = Venue(name="So RA", lat=-23.5, lng=-46.6)
     session.add(v)
