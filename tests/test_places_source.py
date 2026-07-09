@@ -57,5 +57,55 @@ def test_event_pages_e_events_vazios():
 
 
 def test_defaults_de_seeds_e_types_existem():
-    assert len(SEED_POINTS) >= 10
+    assert len(SEED_POINTS) >= 20
+    names = [n for n, _, _ in SEED_POINTS]
+    assert "Baixa Augusta/Consolacao" in names   # o quarteirao da Selva
     assert "night_club" in SEARCH_TYPES and "event_venue" not in SEARCH_TYPES
+
+
+class _SaturatingClient:
+    """1a chamada devolve 20 (satura); as seguintes devolvem vazio."""
+    def __init__(self, lots):
+        self.lots = lots
+        self.calls = []
+
+    def search_nearby(self, lat, lng, radius, included_type):
+        self.calls.append((lat, lng, radius, included_type))
+        return list(self.lots) if len(self.calls) == 1 else []
+
+
+def test_saturacao_subdivide_em_4_subcelulas():
+    lots = [PlaceResult(place_id=f"P{i}", name=f"Club {i}", lat=-23.5, lng=-46.6,
+                        address=None, primary_type="night_club") for i in range(20)]
+    client = _SaturatingClient(lots)
+    src = PlacesSource(client, seeds=[("Augusta", -23.5545, -46.6620)],
+                       types=("night_club",), radius=1000, log=lambda m: None)
+    vs = list(src.venues())
+    assert len(vs) == 20                     # os 20 da celula saturada SAO emitidos
+    assert len(client.calls) == 5            # 1 original + 4 sub-celulas
+    for _lat, _lng, r, _t in client.calls[1:]:
+        assert abs(r - 720) < 1              # sub-raio = 1000 * 0.72
+
+
+def test_subdivisao_respeita_freio_de_raio():
+    lots = [PlaceResult(place_id=f"P{i}", name=f"C{i}", lat=-23.5, lng=-46.6,
+                        address=None, primary_type="night_club") for i in range(20)]
+    client = _SaturatingClient(lots)
+    # raio 180: sub-raio seria 129.6 < 150 -> NAO subdivide
+    src = PlacesSource(client, seeds=[("X", -23.5, -46.6)], types=("night_club",),
+                       radius=180, log=lambda m: None)
+    list(src.venues())
+    assert len(client.calls) == 1
+
+
+def test_closed_permanently_descartado_na_descoberta():
+    morto = PlaceResult(place_id="PDEAD", name="Fechado", lat=-23.5, lng=-46.6,
+                        address=None, primary_type="night_club",
+                        business_status="CLOSED_PERMANENTLY")
+    vivo = PlaceResult(place_id="PLIVE", name="Aberto", lat=-23.5, lng=-46.6,
+                       address=None, primary_type="night_club",
+                       business_status="OPERATIONAL")
+    client = _FakePlacesClient(by_type={"night_club": [morto, vivo]})
+    src = PlacesSource(client, seeds=[("X", -23.5, -46.6)], types=("night_club",))
+    names = [v.name for v in src.venues()]
+    assert names == ["Aberto"]
