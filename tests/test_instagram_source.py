@@ -75,6 +75,7 @@ def test_parse_rejeita_shortcode_malicioso():
 
 
 import json
+from datetime import datetime, timezone
 from nightlife.ingestion.instagram_source import scrape_handle, ScrapeConfig
 
 
@@ -138,3 +139,33 @@ def test_scrape_handle_mantem_cursor_se_download_falha(tmp_path):
                            download=boom, config=cfg)
     assert result.downloaded == 0
     assert result.last_shortcode == "P1"          # nao perdeu os posts
+
+
+def test_scrape_reporta_latest_post_at(tmp_path):
+    posts = [
+        IgPost(shortcode="NEW11111111", image_url="http://x/i.jpg", caption=None,
+               taken_at=1751500000),
+        IgPost(shortcode="OLD11111111", image_url="http://x/j.jpg", caption=None,
+               taken_at=1751000000),
+    ]
+    result = scrape_handle(
+        "clube", last_shortcode=None,
+        fetch_posts=lambda h: posts,
+        download=lambda p, d: d.write_bytes(b"x") or d,
+        config=ScrapeConfig(inbox=tmp_path, cap=10),
+    )
+    assert result.latest_post_at == datetime.fromtimestamp(1751500000, tz=timezone.utc)
+
+
+def test_scrape_incremental_sem_novos_ainda_reporta_latest(tmp_path):
+    # cursor no topo: nada novo pra baixar, mas o topo do timeline foi VISTO
+    posts = [IgPost(shortcode="TOP11111111", image_url="http://x/i.jpg", caption=None,
+                    taken_at=1751500000)]
+    result = scrape_handle(
+        "clube", last_shortcode="TOP11111111",
+        fetch_posts=lambda h: posts,
+        download=lambda p, d: d.write_bytes(b"x") or d,
+        config=ScrapeConfig(inbox=tmp_path, cap=10),
+    )
+    assert result.downloaded == 0
+    assert result.latest_post_at == datetime.fromtimestamp(1751500000, tz=timezone.utc)
