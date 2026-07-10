@@ -6,7 +6,7 @@ import { joinEventsWithVenues, type EventWithGeo } from './data/join'
 import { activeFilterCount, filterReducer, initialFilters, queryFromFilters } from './filters/state'
 import { applyClientFilters } from './filters/apply'
 import { FestasTab } from './tabs/FestasTab'
-import { MapView } from './map/MapView'
+import { MapaTab } from './tabs/MapaTab'
 import { BottomTabs, type Tab } from './components/BottomTabs'
 import { EventDetail } from './components/EventDetail'
 import { FilterSheet } from './components/FilterSheet'
@@ -27,7 +27,6 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('festas')
   const [events, setEvents] = useState<EventWithGeo[]>([])
   const [venues, setVenues] = useState<VenueOut[]>([])
-  const [showVenues] = useState(true)
   const [open, setOpen] = useState<EventWithGeo | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
@@ -56,9 +55,11 @@ export default function App() {
   const openEvent = (e: EventWithGeo) => { setOpen(e); setSelectedId(e.id) }
 
   const mapa = (
-    <MapView events={filtered} venues={venues} selectedId={selectedId}
-             onSelect={(id) => { const e = filtered.find((x) => x.id === id); if (e) openEvent(e) }}
-             showVenues={showVenues} />
+    <MapaTab events={filtered} venues={venues} filters={filters} dispatch={dispatch}
+             selectedId={selectedId}
+             onSelect={(id) => { const e = events.find((x) => x.id === id); if (e) openEvent(e) }}
+             onOpenSheet={() => setSheetOpen(true)} activeCount={activeCount}
+             withDrawer={!isDesktop} />
   )
   const festas = <FestasTab events={filtered} filters={filters} dispatch={dispatch} onOpen={openEvent}
                             activeCount={activeCount} onOpenSheet={() => setSheetOpen(true)} />
