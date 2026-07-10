@@ -32,5 +32,6 @@ class EventOut(BaseModel):
     status: str
     genre: str | None = None
     ticket_url: str | None = None
+    flyer_url: str | None = None
     confidence: int
     effective_confidence: int = 0

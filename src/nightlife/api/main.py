@@ -1,19 +1,55 @@
 # src/nightlife/api/main.py
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
+from .. import config
 from ..domain.freshness import freshness_factor
 from ..domain.nightlife_relevance import is_buffet_name, venue_relevance
-from ..models import Event, Venue, VenueSource
+from ..models import Event, EventSource, Venue, VenueSource
 from .deps import get_session
 from .schemas import EventOut, VenueOut
 
 app = FastAPI(title="Nightlife SP — API")
+
+config.FLYERS_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/flyers", StaticFiles(directory=str(config.FLYERS_PROCESSED_DIR)), name="flyers")
+
+_IG_PERMALINK = re.compile(r"instagram\.com/p/([A-Za-z0-9_-]+)")
+
+
+def _flyer_files() -> dict[str, str]:
+    """{shortcode: nome do arquivo} do diretorio de flyers processados."""
+    try:
+        return {p.stem: p.name for p in config.FLYERS_PROCESSED_DIR.iterdir()
+                if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}}
+    except OSError:
+        return {}
+
+
+def _flyer_urls_for(session: Session, event_ids: list[int]) -> dict[int, str]:
+    """event_id -> /flyers/arquivo, para eventos com permalink IG cujo flyer existe."""
+    if not event_ids:
+        return {}
+    files = _flyer_files()
+    if not files:
+        return {}
+    out: dict[int, str] = {}
+    rows = session.execute(
+        select(EventSource.event_id, EventSource.source_url)
+        .where(EventSource.event_id.in_(event_ids), EventSource.source_url.is_not(None))
+    ).all()
+    for eid, url in rows:
+        m = _IG_PERMALINK.search(url or "")
+        if m and m.group(1) in files and eid not in out:
+            out[eid] = f"/flyers/{files[m.group(1)]}"
+    return out
 
 
 def _parse_bbox(bbox: str) -> tuple[float, float, float, float]:
@@ -126,6 +162,9 @@ def list_events(
             if is_buffet_name(vname)
         }
         outs = [o for o in outs if o.venue_id not in blocked_ids]
+    flyers = _flyer_urls_for(session, [o.id for o in outs])
+    for o in outs:
+        o.flyer_url = flyers.get(o.id)
     return outs
 
 
@@ -134,4 +173,6 @@ def get_event(event_id: int, session: Session = Depends(get_session)):
     event = session.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="evento nao encontrado")
-    return _with_effective(EventOut, event, datetime.now(timezone.utc))
+    out = _with_effective(EventOut, event, datetime.now(timezone.utc))
+    out.flyer_url = _flyer_urls_for(session, [event.id]).get(event.id)
+    return out
