@@ -96,6 +96,10 @@ def list_venues(
             Venue.lng >= min_lng, Venue.lng <= max_lng,
         )
     venues = session.scalars(q).all()
+    gp_ids = set(session.scalars(
+        select(distinct(VenueSource.venue_id))
+        .where(VenueSource.source_type == "google_places")
+    ).all())
     if not include_all:
         with_events = set(session.scalars(
             select(Event.venue_id).where(Event.venue_id.is_not(None))
@@ -103,10 +107,6 @@ def list_venues(
         source_counts = dict(session.execute(
             select(VenueSource.venue_id, func.count(distinct(VenueSource.source_type)))
             .group_by(VenueSource.venue_id)
-        ).all())
-        gp_ids = set(session.scalars(
-            select(distinct(VenueSource.venue_id))
-            .where(VenueSource.source_type == "google_places")
         ).all())
         stale_cutoff = datetime.now(timezone.utc) - timedelta(days=365)
         venues = [
@@ -122,6 +122,8 @@ def list_venues(
         ]
     now = datetime.now(timezone.utc)
     outs = [_with_effective(VenueOut, v, now) for v in venues]
+    for o in outs:
+        o.places_verified = o.id in gp_ids
     outs = [o for o in outs if o.effective_confidence >= min_confidence]
     outs.sort(key=lambda o: o.effective_confidence, reverse=True)
     return outs
@@ -132,7 +134,13 @@ def get_venue(venue_id: int, session: Session = Depends(get_session)):
     venue = session.get(Venue, venue_id)
     if venue is None:
         raise HTTPException(status_code=404, detail="venue nao encontrado")
-    return _with_effective(VenueOut, venue, datetime.now(timezone.utc))
+    out = _with_effective(VenueOut, venue, datetime.now(timezone.utc))
+    out.places_verified = bool(session.scalar(
+        select(func.count()).select_from(VenueSource)
+        .where(VenueSource.venue_id == venue_id,
+               VenueSource.source_type == "google_places")
+    ))
+    return out
 
 
 @app.get("/events", response_model=list[EventOut])

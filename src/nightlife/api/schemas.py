@@ -20,6 +20,8 @@ class VenueOut(BaseModel):
     confidence: int
     effective_confidence: int = 0
     is_monitored: bool
+    ig_last_post_at: datetime | None = None
+    places_verified: bool = False
 
 
 class EventOut(BaseModel):
