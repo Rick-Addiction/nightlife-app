@@ -57,22 +57,25 @@ a { color: var(--green); text-decoration: none; }
 
 .empty { padding: 40px; text-align: center; color: var(--muted); font-weight: 700; }
 
-/* popups do mapa (maplibre) rebrandados — o default e um quadrado BRANCO */
-.maplibregl-popup-content {
+/* popups do mapa (maplibre) rebrandados — o default e um quadrado BRANCO.
+   prefixo .maplibregl-popup sobe a especificidade acima do maplibre-gl.css,
+   que entra no bundle DEPOIS deste arquivo (import dentro do MapView) e
+   empataria/venceria sem ele. */
+.maplibregl-popup .maplibregl-popup-content {
   background: var(--black); color: var(--text); border: 2px solid var(--pink);
   border-radius: 0; padding: 0; box-shadow: 4px 4px 0 rgba(255, 46, 136, 0.25);
   font-family: inherit;
   animation: b-pop 0.16s ease-out;
 }
-.maplibregl-popup-anchor-top .maplibregl-popup-tip,
-.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
-.maplibregl-popup-anchor-top-right .maplibregl-popup-tip { border-bottom-color: var(--pink); }
-.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
-.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
-.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { border-top-color: var(--pink); }
-.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--pink); }
-.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--pink); }
-.maplibregl-popup-close-button {
+.maplibregl-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip { border-bottom-color: var(--pink); }
+.maplibregl-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { border-top-color: var(--pink); }
+.maplibregl-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--pink); }
+.maplibregl-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--pink); }
+.maplibregl-popup .maplibregl-popup-close-button {
   color: var(--text); font-size: 15px; font-weight: 900; right: 4px; top: 2px; background: none;
 }
 
