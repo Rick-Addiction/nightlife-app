@@ -7,7 +7,7 @@ import type { EventWithGeo } from '../data/join'
 const ev = (id: number, name: string, flyer: string | null): EventWithGeo => ({
   id, name, starts_at: '2099-07-12T23:00:00-03:00', ends_at: null,
   venue_id: 1, status: 'scheduled', genre: null, ticket_url: null, confidence: 50,
-  effective_confidence: 50, flyer_url: flyer, venueName: 'Selva Club', venueInstagram: null, lat: -23.5, lng: -46.6, mappable: true,
+  effective_confidence: 50, flyer_url: flyer, venueName: 'Selva Club', venueInstagram: null, venueIgLastPostAt: null, lat: -23.5, lng: -46.6, mappable: true,
 })
 
 describe('FestasTab', () => {

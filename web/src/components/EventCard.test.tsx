@@ -8,7 +8,7 @@ const ev = (over: Partial<EventWithGeo>): EventWithGeo => ({
   id: 1, name: 'Mamba Negra', starts_at: '2099-07-12T23:00:00-03:00', ends_at: null,
   venue_id: 5, status: 'scheduled', genre: 'Techno', ticket_url: null, confidence: 85,
   effective_confidence: 85, flyer_url: null, venueName: 'Selva Club', venueInstagram: null,
-  lat: -23.55, lng: -46.65, mappable: true, ...over,
+  venueIgLastPostAt: null, lat: -23.55, lng: -46.65, mappable: true, ...over,
 })
 
 describe('EventCard', () => {

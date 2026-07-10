@@ -5,7 +5,7 @@ import type { VenueOut } from '../api/types'
 const venue = (over: Partial<VenueOut>): VenueOut => ({
   id: 1, name: 'X', category: 'nightclub', lat: -23.5, lng: -46.6, address: null,
   instagram: null, website: null, status: 'operational', confidence: 50,
-  effective_confidence: 50, is_monitored: false, ...over,
+  effective_confidence: 50, is_monitored: false, ig_last_post_at: null, places_verified: false, ...over,
 })
 
 describe('venuesToFeatureCollection', () => {

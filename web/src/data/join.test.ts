@@ -5,6 +5,7 @@ import type { EventOut, VenueOut } from '../api/types'
 const venue = (id: number, name: string, lat: number | null, lng: number | null, instagram: string | null = null): VenueOut => ({
   id, name, category: 'nightclub', lat, lng, address: null, instagram, website: null,
   status: 'operational', confidence: 50, effective_confidence: 50, is_monitored: false,
+  ig_last_post_at: null, places_verified: false,
 })
 const ev = (id: number, name: string, venue_id: number | null): EventOut => ({
   id, name, starts_at: '2099-06-13T23:00:00-03:00', ends_at: null, venue_id,
@@ -28,5 +29,14 @@ describe('joinEventsWithVenues', () => {
     const out = joinEventsWithVenues([ev(1, 'Festa', 10)], [venue(10, 'Cargo', null, null)])
     expect(out[0].mappable).toBe(false)
     expect(out[0].venueName).toBe('Cargo')  // nome resolve mesmo sem geo
+  })
+  it('propaga ig_last_post_at do venue para o evento joinado', () => {
+    const v = { ...venue(7, 'Lab Club', -23.5, -46.6), ig_last_post_at: '2026-07-09T03:00:00Z' }
+    const out = joinEventsWithVenues([ev(1, 'Mamba', 7)], [v])
+    expect(out[0].venueIgLastPostAt).toBe('2026-07-09T03:00:00Z')
+  })
+  it('evento sem venue tem venueIgLastPostAt null', () => {
+    const out = joinEventsWithVenues([ev(1, 'Festa', null)], [])
+    expect(out[0].venueIgLastPostAt).toBeNull()
   })
 })

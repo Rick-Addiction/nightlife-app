@@ -11,6 +11,8 @@ export interface VenueOut {
   confidence: number
   effective_confidence: number
   is_monitored: boolean
+  ig_last_post_at: string | null
+  places_verified: boolean
 }
 
 export interface EventOut {
