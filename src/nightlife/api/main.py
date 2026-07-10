@@ -6,7 +6,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
@@ -19,10 +19,10 @@ from .schemas import EventOut, VenueOut
 
 app = FastAPI(title="Nightlife SP — API")
 
-config.FLYERS_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/flyers", StaticFiles(directory=str(config.FLYERS_PROCESSED_DIR)), name="flyers")
-
 _IG_PERMALINK = re.compile(r"instagram\.com/p/([A-Za-z0-9_-]+)")
+# so serve imagem com nome no formato shortcode.ext — sidecars .json e
+# qualquer path fora do padrao respondem 404 (M1); dir lido em request-time (M3)
+_FLYER_FILE = re.compile(r"^[A-Za-z0-9_-]+\.(?:jpg|jpeg|png|webp)$")
 # "dia" de evento = dia do CALENDARIO em Sao Paulo (disciplina do projeto).
 # Comparar timestamptz com a DATE crua vira meia-noite UTC: HOJE/AMANHA
 # (date_from == date_to) davam janela de largura ZERO, e sabado 23h SP
@@ -32,6 +32,16 @@ _SP_TZ = ZoneInfo("America/Sao_Paulo")
 
 def _sp_day_start(d: date) -> datetime:
     return datetime.combine(d, time.min, tzinfo=_SP_TZ)
+
+
+@app.get("/flyers/{filename}")
+def get_flyer(filename: str):
+    if not _FLYER_FILE.fullmatch(filename):
+        raise HTTPException(status_code=404, detail="flyer nao encontrado")
+    path = config.FLYERS_PROCESSED_DIR / filename
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="flyer nao encontrado")
+    return FileResponse(path)
 
 
 def _flyer_files() -> dict[str, str]:

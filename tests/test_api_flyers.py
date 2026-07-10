@@ -76,3 +76,19 @@ def test_evento_sem_source_ig_tem_flyer_null(session, tmp_path, monkeypatch):
         assert row["flyer_url"] is None
     finally:
         app.dependency_overrides.clear()
+
+
+def test_rota_flyers_so_serve_imagem(session, tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "FLYERS_PROCESSED_DIR", tmp_path)
+    (tmp_path / "ABC12345678.jpg").write_bytes(b"imagem")
+    (tmp_path / "ABC12345678.json").write_text("{\"caption\": \"segredo\"}")
+    client = _client(session)
+    try:
+        assert client.get("/flyers/ABC12345678.jpg").status_code == 200
+        # M1: sidecar .json NUNCA e servido
+        assert client.get("/flyers/ABC12345678.json").status_code == 404
+        # traversal e nomes fora do padrao shortcode
+        assert client.get("/flyers/..%2Fconftest.py").status_code == 404
+        assert client.get("/flyers/NAOEXISTE999.jpg").status_code == 404
+    finally:
+        app.dependency_overrides.clear()
