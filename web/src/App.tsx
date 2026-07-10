@@ -1,13 +1,15 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useMemo, useReducer, useState } from 'react'
 import './theme.css'
 import { fetchEvents, fetchVenues } from './api/client'
 import type { VenueOut } from './api/types'
 import { joinEventsWithVenues, type EventWithGeo } from './data/join'
-import { filterReducer, initialFilters, queryFromFilters } from './filters/state'
+import { activeFilterCount, filterReducer, initialFilters, queryFromFilters } from './filters/state'
+import { applyClientFilters } from './filters/apply'
 import { FestasTab } from './tabs/FestasTab'
 import { MapView } from './map/MapView'
 import { BottomTabs, type Tab } from './components/BottomTabs'
 import { EventDetail } from './components/EventDetail'
+import { FilterSheet } from './components/FilterSheet'
 
 function useIsDesktop(): boolean {
   const [is, setIs] = useState(() => window.matchMedia('(min-width: 768px)').matches)
@@ -31,7 +33,15 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const isDesktop = useIsDesktop()
+
+  // filtros client-side sobre o array joinado; a API so recebe datas/confianca
+  const filtered = useMemo(() => applyClientFilters(events, filters), [events, filters])
+  const genreOptions = useMemo(
+    () => [...new Set(events.map((e) => e.genre).filter((g): g is string => !!g))].sort(),
+    [events])
+  const activeCount = activeFilterCount(filters)
 
   useEffect(() => {
     let alive = true
@@ -46,12 +56,12 @@ export default function App() {
   const openEvent = (e: EventWithGeo) => { setOpen(e); setSelectedId(e.id) }
 
   const mapa = (
-    <MapView events={events} venues={venues} selectedId={selectedId}
-             onSelect={(id) => { const e = events.find((x) => x.id === id); if (e) openEvent(e) }}
+    <MapView events={filtered} venues={venues} selectedId={selectedId}
+             onSelect={(id) => { const e = filtered.find((x) => x.id === id); if (e) openEvent(e) }}
              showVenues={showVenues} />
   )
-  const festas = <FestasTab events={events} filters={filters} dispatch={dispatch} onOpen={openEvent}
-                            activeCount={0} onOpenSheet={() => {}} />
+  const festas = <FestasTab events={filtered} filters={filters} dispatch={dispatch} onOpen={openEvent}
+                            activeCount={activeCount} onOpenSheet={() => setSheetOpen(true)} />
   const locais = <div className="empty" style={{ paddingTop: 80 }}>LOCAIS — em breve (Plano C-2)</div>
 
   if (error) {
@@ -79,7 +89,7 @@ export default function App() {
             <span className={tab !== 'locais' ? 'on' : ''} onClick={() => setTab('festas')}>FESTAS</span>
             <span className={tab === 'locais' ? 'on' : ''} onClick={() => setTab('locais')}>LOCAIS</span>
           </nav>
-          <span style={{ fontSize: 11 }}>{events.length} FESTAS</span>
+          <span style={{ fontSize: 11 }}>{filtered.length} FESTAS</span>
         </div>
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           <div style={{ width: '40%', overflowY: 'auto', borderRight: '3px solid var(--pink)' }}>
@@ -88,6 +98,10 @@ export default function App() {
           <div style={{ flex: 1 }}>{mapa}</div>
         </div>
         {open && <EventDetail event={open} onClose={() => setOpen(null)} />}
+        {sheetOpen && (
+          <FilterSheet filters={filters} dispatch={dispatch} count={filtered.length}
+                       genreOptions={genreOptions} onClose={() => setSheetOpen(false)} />
+        )}
       </div>
     )
   }
@@ -103,6 +117,10 @@ export default function App() {
       {tab === 'locais' && locais}
       <BottomTabs tab={tab} onTab={setTab} />
       {open && <EventDetail event={open} onClose={() => setOpen(null)} />}
+      {sheetOpen && (
+        <FilterSheet filters={filters} dispatch={dispatch} count={filtered.length}
+                     genreOptions={genreOptions} onClose={() => setSheetOpen(false)} />
+      )}
     </div>
   )
 }
