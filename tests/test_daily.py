@@ -80,3 +80,14 @@ def test_steps_inclui_ra():
     assert "ingest_ra" in nomes
     # ra vem antes do ig (venues do RA ancoram antes de scrapear)
     assert nomes.index("ingest_ra") < nomes.index("ingest_ig")
+
+
+def test_steps_inclui_sympla():
+    # regressao do smoke C-2: Sympla ficou FORA do daily desde que o daily
+    # nasceu (so tinha discover/ig/flyers; RA entrou depois, Sympla nunca) —
+    # eventos de ticketing congelaram no seed de 2026-07-04
+    from nightlife.daily import STEPS
+    nomes = [nome for nome, argv in STEPS]
+    assert "ingest_sympla" in nomes
+    # sympla tambem ancora venues/organizers antes do scrape de IG
+    assert nomes.index("ingest_sympla") < nomes.index("ingest_ig")
