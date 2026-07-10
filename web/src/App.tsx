@@ -42,16 +42,19 @@ export default function App() {
     () => [...new Set(events.map((e) => e.genre).filter((g): g is string => !!g))].sort(),
     [events])
   const activeCount = activeFilterCount(filters)
+  // refetch SO quando a query da API muda — filtros client-side (genero,
+  // bairro, gps, extras) nao devem derrubar a lista nem repintar o mapa
+  const queryKey = JSON.stringify(queryFromFilters(filters))
 
   useEffect(() => {
     let alive = true
     setLoading(true); setError(null)
-    Promise.all([fetchEvents(queryFromFilters(filters)), fetchVenues()])
+    Promise.all([fetchEvents(JSON.parse(queryKey)), fetchVenues()])
       .then(([evs, vns]) => { if (alive) { setEvents(joinEventsWithVenues(evs, vns)); setVenues(vns) } })
       .catch((e) => { if (alive) setError(String(e)) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [filters, reloadKey])
+  }, [queryKey, reloadKey])
 
   const openEvent = (e: EventWithGeo) => { setOpen(e); setSelectedId(e.id) }
 

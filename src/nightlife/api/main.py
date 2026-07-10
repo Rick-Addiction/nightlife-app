@@ -34,7 +34,7 @@ def _sp_day_start(d: date) -> datetime:
     return datetime.combine(d, time.min, tzinfo=_SP_TZ)
 
 
-@app.get("/flyers/{filename}")
+@app.api_route("/flyers/{filename}", methods=["GET", "HEAD"])
 def get_flyer(filename: str):
     if not _FLYER_FILE.fullmatch(filename):
         raise HTTPException(status_code=404, detail="flyer nao encontrado")

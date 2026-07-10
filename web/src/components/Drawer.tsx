@@ -16,7 +16,7 @@ export function Drawer({ state, onState, bottom = 44, label, children }: {
   const h = dragPx ?? drawerHeight(state, vh())
 
   const onPointerDown = (e: React.PointerEvent) => {
-    ;(e.target as Element).setPointerCapture?.(e.pointerId)
+    ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
     start.current = { y: e.clientY, h, moved: false }
   }
   const onPointerMove = (e: React.PointerEvent) => {
@@ -32,6 +32,7 @@ export function Drawer({ state, onState, bottom = 44, label, children }: {
     start.current = null
     setDragPx(null)
   }
+  const onPointerCancel = () => { start.current = null; setDragPx(null) }
 
   return (
     <div style={{ position: 'fixed', left: 0, right: 0, bottom, height: h, zIndex: 20,
@@ -40,7 +41,7 @@ export function Drawer({ state, onState, bottom = 44, label, children }: {
                   display: 'flex', flexDirection: 'column' }}>
       <button aria-label={label}
               onPointerDown={onPointerDown} onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
+              onPointerUp={onPointerUp} onPointerCancel={onPointerCancel}
               style={{ height: HANDLE_PX, flex: 'none', touchAction: 'none',
                        background: 'none', border: 'none', cursor: 'grab',
                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>

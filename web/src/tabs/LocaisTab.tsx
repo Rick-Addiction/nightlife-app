@@ -6,7 +6,7 @@ import { igActivity } from '../data/vivacity'
 import { VenueCard } from '../components/VenueCard'
 
 export function normalize(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
 export function filterVenues(venues: VenueOut[], q: string): VenueOut[] {

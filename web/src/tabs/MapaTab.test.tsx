@@ -61,6 +61,6 @@ describe('MapaTab', () => {
   })
   it('com withDrawer renderiza a gaveta com a contagem', () => {
     render(<MapaTab {...base} />)
-    expect(screen.getByText(/1 FESTAS NA ÁREA/)).toBeInTheDocument()
+    expect(screen.getByText(/1 FESTA NA ÁREA/)).toBeInTheDocument()
   })
 })

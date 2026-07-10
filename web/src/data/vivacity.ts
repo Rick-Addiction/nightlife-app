@@ -1,3 +1,6 @@
+// "Dia" = dia do calendario LOCAL do aparelho. Publico-alvo usa o app em SP
+// (UTC-3), entao dia-local == dia-SP — espelha o _sp_day_start do backend
+// sem arrastar biblioteca de timezone pro bundle.
 import type { EventWithGeo } from './join'
 
 export const IG_ACTIVE_DAYS = 30

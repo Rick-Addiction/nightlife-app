@@ -52,4 +52,17 @@ describe('FilterSheet', () => {
     await userEvent.click(screen.getByRole('button', { name: 'LIMPAR' }))
     expect(dispatch).toHaveBeenCalledWith({ type: 'clearAll' })
   })
+  it('genero selecionado fora do fetch atual continua visivel no SOM', () => {
+    render(<FilterSheet {...base} filters={{ ...initialFilters, genres: ['psytrance'] }} />)
+    expect(screen.getByRole('button', { name: 'PSYTRANCE' })).toBeInTheDocument()
+  })
+  it('GPS negado desabilita o chip sem quebrar o resto', async () => {
+    const getCurrentPosition = vi.fn((_ok: PositionCallback, err?: PositionErrorCallback) =>
+      err?.({ code: 1 } as GeolocationPositionError))
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } })
+    render(<FilterSheet {...base} />)
+    await userEvent.click(screen.getByRole('button', { name: /PERTO DE MIM/ }))
+    expect(screen.getByRole('button', { name: /PERTO DE MIM/ })).toBeDisabled()
+    vi.unstubAllGlobals()
+  })
 })

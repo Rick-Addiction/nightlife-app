@@ -24,6 +24,9 @@ export function FilterSheet({ filters, dispatch, count, genreOptions, onClose }:
   count: number; genreOptions: string[]; onClose: () => void
 }) {
   const [gpsDenied, setGpsDenied] = useState(false)
+  // uniao: genero selecionado continua visivel (e des-togglavel) mesmo se o
+  // fetch atual nao tiver nenhum evento dele
+  const genres = [...new Set([...genreOptions, ...filters.genres])].sort()
 
   const nearMeClick = () => {
     if (filters.nearMe) { dispatch({ type: 'setNearMe', point: null }); return }
@@ -49,6 +52,7 @@ export function FilterSheet({ filters, dispatch, count, genreOptions, onClose }:
                       onClick={() => dispatch({ type: 'setPreset', preset: key })}>{label}</button>
             ))}
             <input type="date" value={filters.date ?? ''} aria-label="DATA"
+                   // limpar o input nao tem acao propria: sair do preset 'date' e via chips
                    onChange={(e) => e.target.value && dispatch({ type: 'setDate', date: e.target.value })}
                    className={`chip${filters.preset === 'date' ? ' on' : ''}`}
                    style={{ colorScheme: 'dark' }} />
@@ -66,10 +70,10 @@ export function FilterSheet({ filters, dispatch, count, genreOptions, onClose }:
             ))}
           </Section>
           <Section title="SOM">
-            {genreOptions.length === 0 && (
+            {genres.length === 0 && (
               <span className="label" style={{ fontWeight: 700 }}>SEM GÊNEROS NOS RESULTADOS</span>
             )}
-            {genreOptions.map((g) => (
+            {genres.map((g) => (
               <button key={g} className={`chip${filters.genres.includes(g) ? ' on' : ''}`}
                       onClick={() => dispatch({ type: 'toggleGenre', genre: g })}>
                 {g.toUpperCase()}

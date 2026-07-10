@@ -63,7 +63,8 @@ export function MapaTab({ events, venues, filters, dispatch, selectedId, onSelec
       </div>
 
       {withDrawer && (
-        <Drawer state={drawer} onState={setDrawer} label={`${events.length} FESTAS NA ÁREA`}>
+        <Drawer state={drawer} onState={setDrawer}
+                label={`${events.length} ${events.length === 1 ? 'FESTA' : 'FESTAS'} NA ÁREA`}>
           {events.map((e) => (
             <EventCard key={e.id} event={e} variant="row"
                        onOpen={(ev) => onSelect(ev.id)} />

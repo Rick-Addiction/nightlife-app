@@ -85,6 +85,7 @@ def test_rota_flyers_so_serve_imagem(session, tmp_path, monkeypatch):
     client = _client(session)
     try:
         assert client.get("/flyers/ABC12345678.jpg").status_code == 200
+        assert client.head("/flyers/ABC12345678.jpg").status_code == 200
         # M1: sidecar .json NUNCA e servido
         assert client.get("/flyers/ABC12345678.json").status_code == 404
         # traversal e nomes fora do padrao shortcode
