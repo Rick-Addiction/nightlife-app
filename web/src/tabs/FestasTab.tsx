@@ -10,6 +10,7 @@ const TITLES: Record<Preset, [string, string]> = {
   today: ['ESTA', 'NOITE'],
   tomorrow: ['AMANHÃ', 'À NOITE'],
   weekend: ['FIM DE', 'SEMANA'],
+  date: ['NESSE', 'DIA'],
   all: ['TUDO', 'QUE HÁ'],
 }
 
