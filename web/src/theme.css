@@ -1,14 +1,58 @@
 :root {
-  --bg-0: #0a0e1e; --bg-1: #140a1e; --panel: #0e1428; --border: #1e2a44;
-  --cyan: #22e0e0; --magenta: #e055c0; --text: #dde; --muted: #8ab;
+  --pink: #ff2e88; --green: #00ff85; --black: #000;
+  --panel: #111; --line: #333; --text: #fff; --muted: #888; --dim: #555;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: linear-gradient(160deg, var(--bg-0), var(--bg-1)); color: var(--text); font-family: system-ui, sans-serif; }
-.evcard { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin: 8px; cursor: pointer; }
-.evcard.sel { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
-.evcard .name { font-size: 15px; font-weight: 700; background: linear-gradient(90deg, var(--cyan), var(--magenta)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.evcard .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
-.evcard .conf { color: var(--cyan); font-weight: 700; float: right; }
-.evcard .tag { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 5px; background: #e055c018; color: #e07dd0; margin-top: 8px; margin-right: 5px; }
-.evcard .nogeo { color: #d9a; }
-.empty { padding: 40px; text-align: center; color: var(--muted); }
+html, body, #root { height: 100%; }
+body {
+  margin: 0; background: var(--black); color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--green); text-decoration: none; }
+
+/* tipografia brutalista */
+.hline { font-weight: 900; text-transform: uppercase; letter-spacing: -0.04em; line-height: 0.95; }
+.label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+/* chips de filtro */
+.chip {
+  font-size: 11px; font-weight: 800; padding: 6px 12px; cursor: pointer;
+  background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+}
+.chip.on { background: var(--pink); color: var(--black); border-color: var(--pink); font-weight: 900; }
+.chip.grn { color: var(--green); border-color: var(--green); }
+
+/* cards de evento */
+.b-card { border: 2px solid var(--line); background: var(--black); position: relative; cursor: pointer; }
+.b-card.hot, .b-card.sel { border-color: var(--text); }
+.b-card .conf {
+  position: absolute; top: -2px; right: -2px; background: var(--green); color: var(--black);
+  font-size: 10px; font-weight: 900; padding: 2px 8px;
+}
+.b-card .title { font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.03em; }
+.b-card .meta { font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 3px; }
+.tag { display: inline-block; font-size: 9px; font-weight: 800; padding: 2px 8px; background: var(--pink); color: var(--black); margin-right: 4px; text-transform: uppercase; }
+.tag.ghost { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+
+/* botoes de acao (detalhe) */
+.b-btn { display: block; text-align: center; font-weight: 900; font-size: 13px; padding: 12px 0; text-transform: uppercase; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+.b-btn.primary { background: var(--green); color: var(--black); border-color: var(--green); }
+
+/* barra de abas (mobile) */
+.tabbar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; z-index: 30; }
+.tabbar button {
+  flex: 1; padding: 13px 0; font-weight: 900; font-size: 12px; letter-spacing: 0.06em;
+  background: var(--panel); color: var(--text); border: none; border-top: 2px solid var(--line);
+  text-transform: uppercase; cursor: pointer;
+}
+.tabbar button.on { background: var(--pink); color: var(--black); border-top-color: var(--pink); }
+
+/* header desktop */
+.d-header { display: flex; justify-content: space-between; align-items: center; background: var(--pink); color: var(--black); padding: 10px 18px; font-weight: 900; }
+.d-header nav { display: flex; gap: 18px; font-size: 12px; text-transform: uppercase; }
+.d-header nav span { cursor: pointer; opacity: 0.6; }
+.d-header nav span.on { opacity: 1; border-bottom: 3px solid var(--black); }
+
+.empty { padding: 40px; text-align: center; color: var(--muted); font-weight: 700; }

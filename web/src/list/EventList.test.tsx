@@ -5,7 +5,7 @@ import type { EventWithGeo } from '../data/join'
 
 const base: EventWithGeo = {
   id: 1, name: 'Mamba Negra', starts_at: '2099-06-13T23:00:00-03:00', ends_at: null,
-  venue_id: 10, status: 'scheduled', genre: 'techno', ticket_url: 'http://t', confidence: 80,
+  venue_id: 10, status: 'scheduled', genre: 'techno', ticket_url: 'http://t', flyer_url: null, confidence: 80,
   effective_confidence: 80, venueName: 'Lab Club', lat: -23.5, lng: -46.6, mappable: true,
 }
 

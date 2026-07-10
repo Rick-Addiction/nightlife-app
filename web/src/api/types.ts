@@ -22,6 +22,7 @@ export interface EventOut {
   status: string
   genre: string | null
   ticket_url: string | null
+  flyer_url: string | null
   confidence: number
   effective_confidence: number
 }

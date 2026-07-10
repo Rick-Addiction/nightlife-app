@@ -4,7 +4,7 @@ import type { EventWithGeo } from './join'
 
 const ev = (over: Partial<EventWithGeo>): EventWithGeo => ({
   id: 1, name: 'Festa', starts_at: '2026-07-10T23:00:00-03:00', ends_at: null,
-  venue_id: 5, status: 'scheduled', genre: null, ticket_url: null, confidence: 40,
+  venue_id: 5, status: 'scheduled', genre: null, ticket_url: null, flyer_url: null, confidence: 40,
   effective_confidence: 40, venueName: 'D-Edge', lat: -23.5, lng: -46.6, mappable: true, ...over,
 })
 

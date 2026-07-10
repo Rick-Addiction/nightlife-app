@@ -8,7 +8,7 @@ const venue = (id: number, name: string, lat: number | null, lng: number | null)
 })
 const ev = (id: number, name: string, venue_id: number | null): EventOut => ({
   id, name, starts_at: '2099-06-13T23:00:00-03:00', ends_at: null, venue_id,
-  status: 'scheduled', genre: 'techno', ticket_url: null, confidence: 80, effective_confidence: 80,
+  status: 'scheduled', genre: 'techno', ticket_url: null, flyer_url: null, confidence: 80, effective_confidence: 80,
 })
 
 describe('joinEventsWithVenues', () => {
