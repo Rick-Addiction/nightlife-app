@@ -34,3 +34,12 @@ describe('filters', () => {
     expect(wknd.date_to).toBe('2026-07-12')   // domingo
   })
 })
+
+describe('preset tomorrow', () => {
+  it('gera date_from/date_to de amanha (calendario local)', () => {
+    const now = new Date(2026, 6, 10, 22, 0)   // 10/07/2026 22h local
+    const q = queryFromFilters({ ...initialFilters, preset: 'tomorrow' }, now)
+    expect(q.date_from).toBe('2026-07-11')
+    expect(q.date_to).toBe('2026-07-11')
+  })
+})

@@ -1,6 +1,6 @@
 import type { EventQuery } from '../api/client'
 
-export type Preset = 'upcoming' | 'today' | 'weekend' | 'all'
+export type Preset = 'upcoming' | 'today' | 'tomorrow' | 'weekend' | 'all'
 
 export interface FilterState {
   preset: Preset
@@ -43,6 +43,10 @@ export function queryFromFilters(f: FilterState, now: Date = new Date()): EventQ
   if (f.preset === 'today') {
     q.date_from = isoDate(now)
     q.date_to = isoDate(now)
+  } else if (f.preset === 'tomorrow') {
+    const t = new Date(now); t.setDate(now.getDate() + 1)
+    q.date_from = isoDate(t)
+    q.date_to = isoDate(t)
   } else if (f.preset === 'weekend') {
     // proxima sexta ate domingo
     const day = now.getDay() // 0=dom..6=sab
