@@ -14,9 +14,10 @@ const TITLES: Record<Preset, [string, string]> = {
   all: ['TUDO', 'QUE HÁ'],
 }
 
-export function FestasTab({ events, filters, dispatch, onOpen }: {
+export function FestasTab({ events, filters, dispatch, onOpen, activeCount, onOpenSheet }: {
   events: EventWithGeo[]; filters: FilterState
   dispatch: Dispatch<FilterAction>; onOpen: (e: EventWithGeo) => void
+  activeCount: number; onOpenSheet: () => void
 }) {
   const [l1, l2] = TITLES[filters.preset]
   const { hero, rest } = pickHero(events)
@@ -26,7 +27,8 @@ export function FestasTab({ events, filters, dispatch, onOpen }: {
         <div className="hline" style={{ fontSize: 30 }}>{l1}<br /><span style={{ color: 'var(--pink)' }}>{l2}</span></div>
         <div className="label" style={{ marginTop: 5 }}>{events.length} FESTAS</div>
       </div>
-      <FilterChips filters={filters} dispatch={dispatch} />
+      <FilterChips filters={filters} dispatch={dispatch}
+                   activeCount={activeCount} onOpenSheet={onOpenSheet} />
       {events.length === 0 && <div className="empty">Nenhuma festa com esses filtros.</div>}
       {hero && <EventCard event={hero} variant="hero" onOpen={onOpen} />}
       {rest.map((e) => <EventCard key={e.id} event={e} variant="row" onOpen={onOpen} />)}

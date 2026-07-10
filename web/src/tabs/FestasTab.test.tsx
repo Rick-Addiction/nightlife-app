@@ -14,7 +14,7 @@ describe('FestasTab', () => {
   it('manchete por preset + contagem + hero destacado', () => {
     render(<FestasTab events={[ev(1, 'Mamba Negra', '/f/1.jpg'), ev(2, 'Ghost', null)]}
                       filters={{ ...initialFilters, preset: 'today' }} dispatch={() => {}}
-                      onOpen={() => {}} />)
+                      onOpen={() => {}} activeCount={0} onOpenSheet={() => {}} />)
     // match EXATO: /ESTA/ (regex) colidiria com "2 FESTAS" (substring)
     expect(screen.getByText('ESTA')).toBeInTheDocument()      // manchete "ESTA NOITE"
     expect(screen.getByText('2 FESTAS')).toBeInTheDocument()  // contador .label separado
@@ -23,7 +23,8 @@ describe('FestasTab', () => {
   })
 
   it('vazio mostra estado honesto', () => {
-    render(<FestasTab events={[]} filters={initialFilters} dispatch={() => {}} onOpen={() => {}} />)
+    render(<FestasTab events={[]} filters={initialFilters} dispatch={() => {}} onOpen={() => {}}
+                      activeCount={0} onOpenSheet={() => {}} />)
     expect(screen.getByText(/Nenhuma festa/i)).toBeInTheDocument()
   })
 })

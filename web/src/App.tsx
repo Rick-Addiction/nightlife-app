@@ -50,7 +50,8 @@ export default function App() {
              onSelect={(id) => { const e = events.find((x) => x.id === id); if (e) openEvent(e) }}
              showVenues={showVenues} />
   )
-  const festas = <FestasTab events={events} filters={filters} dispatch={dispatch} onOpen={openEvent} />
+  const festas = <FestasTab events={events} filters={filters} dispatch={dispatch} onOpen={openEvent}
+                            activeCount={0} onOpenSheet={() => {}} />
   const locais = <div className="empty" style={{ paddingTop: 80 }}>LOCAIS — em breve (Plano C-2)</div>
 
   if (error) {

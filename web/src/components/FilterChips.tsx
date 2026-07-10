@@ -9,8 +9,9 @@ const PRESETS: { key: Preset; label: string }[] = [
   { key: 'all', label: 'TUDO' },
 ]
 
-export function FilterChips({ filters, dispatch }: {
+export function FilterChips({ filters, dispatch, activeCount, onOpenSheet }: {
   filters: FilterState; dispatch: Dispatch<FilterAction>
+  activeCount: number; onOpenSheet: () => void
 }) {
   return (
     <div style={{ display: 'flex', gap: 5, padding: '6px 12px', overflowX: 'auto' }}>
@@ -20,6 +21,9 @@ export function FilterChips({ filters, dispatch }: {
           {p.label}
         </button>
       ))}
+      <button className={`chip${activeCount > 0 ? ' grn' : ''}`} onClick={onOpenSheet}>
+        {`≡ FILTROS${activeCount > 0 ? ` ·${activeCount}` : ''}`}
+      </button>
     </div>
   )
 }
