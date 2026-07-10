@@ -1,7 +1,7 @@
 # src/nightlife/api/main.py
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy import distinct, func, select
@@ -61,6 +61,7 @@ def list_venues(
             select(distinct(VenueSource.venue_id))
             .where(VenueSource.source_type == "google_places")
         ).all())
+        stale_cutoff = datetime.now(timezone.utc) - timedelta(days=365)
         venues = [
             v for v in venues
             if venue_relevance(
@@ -69,6 +70,7 @@ def list_venues(
                 business_status=v.business_status,
                 source_count=source_counts.get(v.id, 0),
                 has_contact=bool(v.instagram or v.website),
+                ig_stale=(v.ig_last_post_at is not None and v.ig_last_post_at < stale_cutoff),
             ) == "relevant"
         ]
     now = datetime.now(timezone.utc)

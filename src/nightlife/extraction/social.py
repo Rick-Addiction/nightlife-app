@@ -14,6 +14,7 @@ _MENTION = re.compile(r"(?<![\w.])@([A-Za-z0-9._]+)")
 _NON_PROFILE = {
     "p", "reel", "reels", "explore", "stories", "tv", "accounts",
     "about", "directory", "developer", "legal", "privacy",
+    "invites", "share", "locations",
 }
 _VALID = re.compile(r"[a-z0-9._]{1,30}")
 

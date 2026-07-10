@@ -41,3 +41,15 @@ def test_venue_relevance_v2():
     assert venue_relevance("Bar Vivo", "bar", False, False,
                            places_verified=True) == "dormant"
     assert venue_relevance("Sem Cat", None, False, False) == "dormant"
+
+
+def test_ig_stale_neutraliza_so_o_contato():
+    # contato com IG parado ha 12+ meses nao prova vida
+    assert venue_relevance("Lab Club", "nightclub", False, False,
+                           has_contact=True, ig_stale=True) == "dormant"
+    # mas Google OPERATIONAL (places_verified) vence IG quieto
+    assert venue_relevance("Lab Club", "nightclub", False, False,
+                           places_verified=True, ig_stale=True) == "relevant"
+    # e atividade vence sempre
+    assert venue_relevance("Lab Club", "nightclub", True, False,
+                           ig_stale=True) == "relevant"

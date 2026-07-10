@@ -15,7 +15,8 @@ from .ingestion.instagram_source import (
     ScrapeConfig, open_context, playwright_download, playwright_fetch_posts, scrape_handle,
 )
 from .persistence.ig_state import (
-    get_or_create_state, handles_to_scrape, record_failure, record_success,
+    get_or_create_state, record_failure, record_success, record_venue_activity,
+    scrape_queue,
 )
 
 FLYERS_DIR = Path("flyers")
@@ -24,8 +25,8 @@ FLYERS_DIR = Path("flyers")
 def main() -> None:
     FLYERS_DIR.mkdir(exist_ok=True)
     with SessionLocal() as session:
-        handles = handles_to_scrape(session, pause_threshold=config.IG_FAILURE_PAUSE_THRESHOLD)
-        handles = handles[: config.IG_MAX_PROFILES_PER_RUN]
+        handles = scrape_queue(session, cap=config.IG_MAX_PROFILES_PER_RUN,
+                               pause_threshold=config.IG_FAILURE_PAUSE_THRESHOLD)
         if not handles:
             print("nenhum handle a varrer (rode discover_handles primeiro).")
             return
@@ -45,6 +46,7 @@ def main() -> None:
                         config=cfg,
                     )
                     record_success(st, result.last_shortcode)
+                    record_venue_activity(session, handle, result.latest_post_at)
                     total += result.downloaded
                     print(f"@{handle}: {result.downloaded} novas")
                 except Exception as exc:  # noqa: BLE001 — falha isolada por handle

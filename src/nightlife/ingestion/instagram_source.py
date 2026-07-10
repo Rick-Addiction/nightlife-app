@@ -7,6 +7,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -111,6 +112,7 @@ class ScrapeResult:
     handle: str
     last_shortcode: str | None
     downloaded: int
+    latest_post_at: datetime | None = None
 
 
 def _ext_from_url(url: str) -> str:
@@ -136,6 +138,11 @@ def scrape_handle(
     Playwright real vem na Task 9; aqui a logica e testada com fakes."""
     config.inbox.mkdir(parents=True, exist_ok=True)
     posts = fetch_posts(handle)
+    # o timeline e visto em TODA varredura (mesmo incremental sem download):
+    # vira o sinal de vida do venue (ig_last_post_at). max(), NAO o primeiro:
+    # post FIXADO fica no topo com data antiga e falsearia o sinal
+    ts = max((p.taken_at for p in posts if p.taken_at), default=None)
+    latest_post_at = datetime.fromtimestamp(ts, tz=timezone.utc) if ts else None
     fresh = new_posts(posts, last_shortcode=last_shortcode, cap=config.cap)
     downloaded = 0
     for post in fresh:
@@ -162,7 +169,8 @@ def scrape_handle(
         new_cursor = fresh[0].shortcode
     else:
         new_cursor = last_shortcode
-    return ScrapeResult(handle=handle, last_shortcode=new_cursor, downloaded=downloaded)
+    return ScrapeResult(handle=handle, last_shortcode=new_cursor, downloaded=downloaded,
+                        latest_post_at=latest_post_at)
 
 
 def open_context(user_data_dir: Path, *, headful: bool):

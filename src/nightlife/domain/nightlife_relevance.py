@@ -42,7 +42,8 @@ def venue_relevance(name: str | None, category: str | None,
                     places_verified: bool = False,
                     business_status: str | None = None,
                     source_count: int = 1,
-                    has_contact: bool = False) -> str:
+                    has_contact: bool = False,
+                    ig_stale: bool = False) -> str:
     """'blocked' | 'relevant' | 'dormant'. v2 (Ciclo A): nightclub so e relevant
     se VIVO (verificado pelo Places, 2+ fontes ou contato) — o diretorio do RA
     guarda clubes historicos, entao categoria sozinha nao prova existencia.
@@ -51,7 +52,9 @@ def venue_relevance(name: str | None, category: str | None,
         return "blocked"
     if has_events or is_monitored:
         return "relevant"           # atividade vence sempre
-    alive = places_verified or source_count >= 2 or has_contact
+    # IG parado ha 12+ meses: o contato nao prova vida (mas Google OPERATIONAL
+    # e atividade continuam valendo)
+    alive = places_verified or source_count >= 2 or (has_contact and not ig_stale)
     if category == "nightclub" and alive:
         return "relevant"
     return "dormant"
