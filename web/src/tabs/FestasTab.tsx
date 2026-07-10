@@ -22,11 +22,8 @@ export function FestasTab({ events, filters, dispatch, onOpen }: {
   return (
     <div style={{ paddingBottom: 70 }}>
       <div style={{ padding: '14px 12px 4px' }}>
-        <div className="hline" style={{ fontSize: 30 }}>
-          {l1}<br /><span style={{ color: 'var(--pink)' }}>{l2}</span>
-          <br />
-          {events.length} FESTAS
-        </div>
+        <div className="hline" style={{ fontSize: 30 }}>{l1}<br /><span style={{ color: 'var(--pink)' }}>{l2}</span></div>
+        <div className="label" style={{ marginTop: 5 }}>{events.length} FESTAS</div>
       </div>
       <FilterChips filters={filters} dispatch={dispatch} />
       {events.length === 0 && <div className="empty">Nenhuma festa com esses filtros.</div>}

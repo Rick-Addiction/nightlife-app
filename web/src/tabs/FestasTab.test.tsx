@@ -15,8 +15,9 @@ describe('FestasTab', () => {
     render(<FestasTab events={[ev(1, 'Mamba Negra', '/f/1.jpg'), ev(2, 'Ghost', null)]}
                       filters={{ ...initialFilters, preset: 'today' }} dispatch={() => {}}
                       onOpen={() => {}} />)
-    expect(screen.getByText(/ESTA/)).toBeInTheDocument()      // manchete "ESTA NOITE"
-    expect(screen.getByText(/2 FESTAS/)).toBeInTheDocument()
+    // match EXATO: /ESTA/ (regex) colidiria com "2 FESTAS" (substring)
+    expect(screen.getByText('ESTA')).toBeInTheDocument()      // manchete "ESTA NOITE"
+    expect(screen.getByText('2 FESTAS')).toBeInTheDocument()  // contador .label separado
     expect(screen.getByRole('img')).toHaveAttribute('src', '/f/1.jpg')  // hero
     expect(screen.getByText('Ghost')).toBeInTheDocument()
   })
