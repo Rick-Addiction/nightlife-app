@@ -5,12 +5,14 @@ export function EventDetail({ event, onClose }: {
   event: EventWithGeo; onClose: () => void
 }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,.75)' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,.75)',
+                  animation: 'b-fade 0.15s ease-out' }}
          onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()}
            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxWidth: 560,
                     margin: '0 auto', background: 'var(--black)', borderTop: '3px solid var(--pink)',
-                    maxHeight: '92vh', overflowY: 'auto' }}>
+                    maxHeight: '92vh', overflowY: 'auto',
+                    animation: 'b-slide-up 0.2s ease-out' }}>
         {/* sticky: com flyer alto + sheet rolada, o X nao pode fugir da tela */}
         <button onClick={onClose} aria-label="fechar"
                 style={{ position: 'sticky', top: 8, float: 'right', marginRight: 8, zIndex: 2,

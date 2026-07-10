@@ -6,6 +6,7 @@ import type { EventWithGeo } from '../data/join'
 import type { VenueOut } from '../api/types'
 import { venuesToFeatureCollection } from './geojson'
 import { upcomingEventsAtVenue } from '../data/venueEvents'
+import { fmtDate as fmtDateFull } from '../components/EventCard'
 
 const MAP_STYLE = {
   version: 8 as const,
@@ -34,7 +35,7 @@ export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
   const [popupId, setPopupId] = useState<number | null>(null)
   const [selVenue, setSelVenue] = useState<SelVenue | null>(null)
   const mappable = events.filter((e) => e.mappable)
-  const popup = mappable.find((e) => e.id === (popupId ?? selectedId))
+  const popup = mappable.find((e) => e.id === popupId)
   // recriar a FeatureCollection a cada render forcaria um deepEqual sobre ~800
   // features; memoiza pra so recalcular quando os venues mudam.
   const venuesFC = useMemo(() => venuesToFeatureCollection(venues), [venues])
@@ -81,10 +82,16 @@ export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
 
       {mappable.map((e) => (
         <Marker key={e.id} longitude={e.lng!} latitude={e.lat!} anchor="bottom"
-                onClick={(ev) => { ev.originalEvent.stopPropagation(); onSelect(e.id); setPopupId(e.id) }}>
+                onClick={(ev) => {
+                  // clique no pin abre o MINI-CARD ancorado no ponto (nao a
+                  // sheet de tela cheia — pesado demais pra um clique no mapa)
+                  ev.originalEvent.stopPropagation()
+                  setSelVenue(null)
+                  setPopupId(e.id)
+                }}>
           <div style={{
             width: 13, height: 13,
-            background: e.id === selectedId ? 'var(--green)' : 'var(--pink)',
+            background: e.id === popupId || e.id === selectedId ? 'var(--green)' : 'var(--pink)',
             transform: 'rotate(45deg)', border: '2px solid #000',
             cursor: 'pointer',
           }} />
@@ -92,35 +99,68 @@ export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
       ))}
 
       {popup && (
-        <Popup longitude={popup.lng!} latitude={popup.lat!} anchor="top"
-               onClose={() => setPopupId(null)} closeButton={false}>
-          <strong>{popup.name}</strong><br />{popup.venueName}
+        <Popup longitude={popup.lng!} latitude={popup.lat!} anchor="bottom" offset={16}
+               onClose={() => setPopupId(null)} closeButton={false} maxWidth="270px">
+          <div style={{ display: 'flex', gap: 8, padding: 8, alignItems: 'center', cursor: 'pointer' }}
+               onClick={() => onSelect(popup.id)}>
+            {popup.flyer_url && (
+              <img src={popup.flyer_url} alt="" loading="lazy"
+                   style={{ width: 46, height: 46, objectFit: 'cover', flex: 'none' }} />
+            )}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 900, fontSize: 12, textTransform: 'uppercase',
+                            letterSpacing: '-0.02em' }}>{popup.name}</div>
+              <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700 }}>
+                {fmtDateFull(popup.starts_at)}{popup.venueName ? ` · ${popup.venueName}` : ''}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--green)', fontWeight: 900, marginTop: 2 }}>VER →</div>
+            </div>
+          </div>
         </Popup>
       )}
 
       {selVenue && (
-        <Popup longitude={selVenue.lng} latitude={selVenue.lat} anchor="top"
-               onClose={() => setSelVenue(null)} closeButton={true} maxWidth="240px">
-          <strong>{selVenue.name}</strong>
-          {selVenue.category && <div style={{ opacity: 0.7 }}>{selVenue.category}</div>}
-          {venueEvents.length > 0 ? (
-            <ul style={{ margin: '6px 0 0', paddingLeft: 16 }}>
-              {venueEvents.slice(0, 5).map((e) => (
-                <li key={e.id}>{fmtDate(e.starts_at)} — {e.name}</li>
-              ))}
-            </ul>
-          ) : (
-            <div style={{ opacity: 0.6, marginTop: 6 }}>sem eventos futuros</div>
-          )}
-          {(() => {
-            const v = venues.find((x) => x.id === selVenue.id)
-            return (
-              <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
-                {v?.instagram && <a href={`https://instagram.com/${v.instagram}`} target="_blank" rel="noreferrer">IG</a>}
-                {v?.website && <a href={v.website} target="_blank" rel="noreferrer">site</a>}
+        <Popup longitude={selVenue.lng} latitude={selVenue.lat} anchor="bottom" offset={10}
+               onClose={() => setSelVenue(null)} closeButton={true} maxWidth="250px">
+          <div style={{ padding: '10px 12px' }}>
+            <div style={{ fontWeight: 900, fontSize: 13, textTransform: 'uppercase',
+                          letterSpacing: '-0.02em', paddingRight: 14 }}>{selVenue.name}</div>
+            {selVenue.category && (
+              <div style={{ fontSize: 9, color: 'var(--green)', fontWeight: 800,
+                            textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 2 }}>
+                {selVenue.category}
               </div>
-            )
-          })()}
+            )}
+            {venueEvents.length > 0 ? (
+              <div style={{ marginTop: 7 }}>
+                {venueEvents.slice(0, 5).map((e) => (
+                  <div key={e.id} style={{ fontSize: 10, fontWeight: 700, marginTop: 3 }}>
+                    <span style={{ color: 'var(--pink)' }}>{fmtDate(e.starts_at)}</span> {e.name}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginTop: 7 }}>
+                SEM FESTA MARCADA
+              </div>
+            )}
+            {(() => {
+              const v = venues.find((x) => x.id === selVenue.id)
+              if (!v?.instagram && !v?.website) return null
+              return (
+                <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+                  {v?.instagram && (
+                    <a className="chip grn" style={{ fontSize: 9, padding: '3px 8px' }}
+                       href={`https://instagram.com/${v.instagram}`} target="_blank" rel="noreferrer">IG</a>
+                  )}
+                  {v?.website && (
+                    <a className="chip" style={{ fontSize: 9, padding: '3px 8px' }}
+                       href={v.website} target="_blank" rel="noreferrer">SITE</a>
+                  )}
+                </div>
+              )
+            })()}
+          </div>
         </Popup>
       )}
     </Map>
