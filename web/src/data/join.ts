@@ -2,6 +2,7 @@ import type { EventOut, VenueOut } from '../api/types'
 
 export interface EventWithGeo extends EventOut {
   venueName: string | null
+  venueInstagram: string | null
   lat: number | null
   lng: number | null
   mappable: boolean
@@ -16,6 +17,7 @@ export function joinEventsWithVenues(events: EventOut[], venues: VenueOut[]): Ev
     return {
       ...e,
       venueName: v?.name ?? null,
+      venueInstagram: v?.instagram ?? null,
       lat,
       lng,
       mappable: lat != null && lng != null,
