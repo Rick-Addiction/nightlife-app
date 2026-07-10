@@ -11,9 +11,11 @@ export function EventDetail({ event, onClose }: {
            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxWidth: 560,
                     margin: '0 auto', background: 'var(--black)', borderTop: '3px solid var(--pink)',
                     maxHeight: '92vh', overflowY: 'auto' }}>
+        {/* sticky: com flyer alto + sheet rolada, o X nao pode fugir da tela */}
         <button onClick={onClose} aria-label="fechar"
-                style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, background: 'var(--black)',
-                         color: 'var(--text)', border: '2px solid var(--line)', fontWeight: 900,
+                style={{ position: 'sticky', top: 8, float: 'right', marginRight: 8, zIndex: 2,
+                         background: 'var(--black)', color: 'var(--text)',
+                         border: '2px solid var(--line)', fontWeight: 900,
                          width: 34, height: 34, cursor: 'pointer' }}>✕</button>
         {event.flyer_url && (
           <img src={event.flyer_url} alt={event.name}

@@ -63,11 +63,15 @@ export default function App() {
       </div>
     )
   }
-  if (loading) return <div className="empty" style={{ paddingTop: 80 }}>CARREGANDO…</div>
+  // gate so no PRIMEIRO load: trocar filtro re-busca sem desmontar a arvore
+  // (senao a tela pisca, o scroll se perde e o mapa reseta o viewport)
+  if (loading && events.length === 0) {
+    return <div className="empty" style={{ paddingTop: 80 }}>CARREGANDO…</div>
+  }
 
   if (isDesktop) {
     return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
         <div className="d-header">
           <span>RADAR★SP</span>
           <nav>
@@ -88,8 +92,12 @@ export default function App() {
   }
 
   return (
-    <div style={{ height: '100vh' }}>
-      {tab === 'mapa' && <div style={{ position: 'fixed', inset: 0, bottom: 44 }}>{mapa}</div>}
+    <div style={{ height: '100dvh' }}>
+      {/* mapa SEMPRE montado (display toggle): trocar de aba nao recria o
+          contexto GL nem reseta o viewport — o MapLibre re-mede via
+          ResizeObserver quando o painel reaparece */}
+      <div style={{ position: 'fixed', inset: 0, bottom: 44,
+                    display: tab === 'mapa' ? 'block' : 'none' }}>{mapa}</div>
       {tab === 'festas' && <div style={{ height: '100%', overflowY: 'auto' }}>{festas}</div>}
       {tab === 'locais' && locais}
       <BottomTabs tab={tab} onTab={setTab} />

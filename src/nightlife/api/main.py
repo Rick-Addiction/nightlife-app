@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -22,6 +23,15 @@ config.FLYERS_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/flyers", StaticFiles(directory=str(config.FLYERS_PROCESSED_DIR)), name="flyers")
 
 _IG_PERMALINK = re.compile(r"instagram\.com/p/([A-Za-z0-9_-]+)")
+# "dia" de evento = dia do CALENDARIO em Sao Paulo (disciplina do projeto).
+# Comparar timestamptz com a DATE crua vira meia-noite UTC: HOJE/AMANHA
+# (date_from == date_to) davam janela de largura ZERO, e sabado 23h SP
+# (= domingo 02h UTC) escapava ate do fim de semana.
+_SP_TZ = ZoneInfo("America/Sao_Paulo")
+
+
+def _sp_day_start(d: date) -> datetime:
+    return datetime.combine(d, time.min, tzinfo=_SP_TZ)
 
 
 def _flyer_files() -> dict[str, str]:
@@ -44,6 +54,7 @@ def _flyer_urls_for(session: Session, event_ids: list[int]) -> dict[int, str]:
     rows = session.execute(
         select(EventSource.event_id, EventSource.source_url)
         .where(EventSource.event_id.in_(event_ids), EventSource.source_url.is_not(None))
+        .order_by(EventSource.id)   # deterministico: 1a evidencia vence
     ).all()
     for eid, url in rows:
         m = _IG_PERMALINK.search(url or "")
@@ -140,9 +151,11 @@ def list_events(
         date_from = date.today()
     q = select(Event).where(Event.confidence >= min_confidence)
     if date_from is not None:
-        q = q.where(Event.starts_at >= date_from)
+        q = q.where(Event.starts_at >= _sp_day_start(date_from))
     if date_to is not None:
-        q = q.where(Event.starts_at <= date_to)
+        # limite superior EXCLUSIVO no inicio do dia seguinte (SP): inclui a
+        # madrugada inteira do proprio date_to
+        q = q.where(Event.starts_at < _sp_day_start(date_to + timedelta(days=1)))
     if genre is not None:
         q = q.where(Event.genre == genre)
     if bbox is not None:

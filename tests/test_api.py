@@ -244,3 +244,26 @@ def test_venues_ig_stale_esconde_so_contato(session):
         assert "IG Vivo" in names and "IG Parado" not in names
     finally:
         app.dependency_overrides.clear()
+
+
+def test_events_dia_unico_inclui_noite_de_sp(session):
+    # HOJE/AMANHA: date_from == date_to tem que pegar festa de 23h SP (que em
+    # UTC ja e o dia seguinte) — comparar com meia-noite UTC dava janela ZERO
+    v = Venue(name="Selva Club")
+    session.add(v)
+    session.flush()
+    session.add(Event(name="Festa 23h", venue_id=v.id, status="scheduled", confidence=50,
+                      starts_at=datetime(2099, 7, 12, 23, 0, tzinfo=SP)))
+    session.add(Event(name="Madrugada 2h", venue_id=v.id, status="scheduled", confidence=50,
+                      starts_at=datetime(2099, 7, 12, 2, 0, tzinfo=SP)))
+    session.add(Event(name="Dia Seguinte", venue_id=v.id, status="scheduled", confidence=50,
+                      starts_at=datetime(2099, 7, 13, 22, 0, tzinfo=SP)))
+    session.flush()
+    client = _client(session)
+    try:
+        names = [x["name"] for x in client.get(
+            "/events", params={"date_from": "2099-07-12", "date_to": "2099-07-12"}).json()]
+        assert "Festa 23h" in names and "Madrugada 2h" in names
+        assert "Dia Seguinte" not in names
+    finally:
+        app.dependency_overrides.clear()

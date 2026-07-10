@@ -35,7 +35,8 @@ export function EventCard({ event, variant, onOpen }: {
     <div className="b-card" onClick={() => onOpen(event)}
          style={{ margin: '8px 12px 0', padding: 9, display: 'flex', gap: 10, alignItems: 'center' }}>
       {event.flyer_url && (
-        <img src={event.flyer_url} alt={event.name} style={{ width: 46, height: 46, objectFit: 'cover', flex: 'none' }} />
+        <img src={event.flyer_url} alt={event.name} loading="lazy" decoding="async"
+             style={{ width: 46, height: 46, objectFit: 'cover', flex: 'none' }} />
       )}
       <div style={{ minWidth: 0 }}>
         <div className="title">{event.name}</div>
