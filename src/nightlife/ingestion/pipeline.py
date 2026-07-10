@@ -38,6 +38,18 @@ def _resolve_venue(session: Session, venue_name: str | None) -> Venue | None:
     return session.get(Venue, m.venue.id) if m is not None else None
 
 
+def _venue_by_handle(session: Session, handle: str | None) -> Venue | None:
+    """Venue dono do handle (fallback de ancoragem). So VENUES — organizer
+    posta festa em casa alheia, ancorar nele erraria o lugar. Handle
+    duplicado (venues ainda nao deduplicados): fica o de maior confianca."""
+    if not handle:
+        return None
+    return session.scalars(
+        select(Venue).where(Venue.instagram == handle)
+        .order_by(Venue.confidence.desc(), Venue.id)
+    ).first()
+
+
 def run_ingestion(session: Session, source: Source, *, reference: date, label: str = "mock") -> IngestionRun:
     run = IngestionRun(source=label, status="running")
     session.add(run)
@@ -118,6 +130,10 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
             elif rev.venue_name:
                 # flyer da nome sem geo (e com typo): ancora no catalogo, nunca cria
                 venue = _resolve_venue(session, rev.venue_name)
+            if venue is None:
+                # nome nao resolveu (ou nem veio): flyer postado pelo IG do
+                # proprio venue ancora nele (Ciclo D-1)
+                venue = _venue_by_handle(session, rev.source_handle)
             organizer_id = None
             if rev.organizer_name:
                 organizer_id = get_or_create_organizer(session, rev.organizer_name).id

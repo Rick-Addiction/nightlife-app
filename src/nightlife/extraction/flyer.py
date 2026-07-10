@@ -40,7 +40,7 @@ class FlyerExtractor(Protocol):
 
 def flyer_to_raw_event(
     extraction: FlyerExtraction, image_hash: str, *, reference: date,
-    permalink: str | None = None,
+    permalink: str | None = None, handle: str | None = None,
 ) -> RawEvent | None:
     """Extracao validada -> RawEvent. Pura. Descarta se nao ha nome de evento."""
     if not extraction.event_name:
@@ -69,6 +69,7 @@ def flyer_to_raw_event(
         source_type="vision_flyer",
         starts_at=starts,
         venue_name=venue_name,              # ancora no catalogo; nunca cria venue
+        source_handle=handle,
         organizer_name=organizer,
         lineup_text=", ".join(extraction.lineup) or None,
         ticket_url=ticket,

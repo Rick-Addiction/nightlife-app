@@ -38,6 +38,7 @@ class RawEvent:
     ends_at: datetime | None = None
     venue: RawVenue | None = None
     venue_name: str | None = None       # so ANCORA em venue existente (flyer: nome sem geo)
+    source_handle: str | None = None    # @ do IG que POSTOU (venue proprio) — fallback de ancora
     lineup_text: str | None = None
     organizer_name: str | None = None
     genre: str | None = None

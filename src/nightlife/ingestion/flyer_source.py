@@ -52,12 +52,13 @@ class FlyerSource:
             seen_hashes.add(image_hash)
 
             sidecar = path.with_suffix(".json")
-            caption = permalink = None
+            caption = permalink = handle = None
             if sidecar.exists():
                 try:
                     meta = json.loads(sidecar.read_text(encoding="utf-8"))
                     caption = meta.get("caption")
                     permalink = meta.get("permalink")
+                    handle = meta.get("handle")
                 except (ValueError, OSError):
                     pass
 
@@ -67,7 +68,8 @@ class FlyerSource:
                 self.failed_paths.append(path)
                 continue
             raw_event = flyer_to_raw_event(extraction, image_hash,
-                                           reference=self._reference, permalink=permalink)
+                                           reference=self._reference,
+                                           permalink=permalink, handle=handle)
             if raw_event is None:
                 _log.info("flyer %s: sem nome de evento (imagem nao e flyer?)", path.name)
                 self.failed_paths.append(path)
