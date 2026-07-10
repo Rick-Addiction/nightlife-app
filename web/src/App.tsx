@@ -7,6 +7,7 @@ import { activeFilterCount, filterReducer, initialFilters, queryFromFilters } fr
 import { applyClientFilters } from './filters/apply'
 import { FestasTab } from './tabs/FestasTab'
 import { MapaTab } from './tabs/MapaTab'
+import { LocaisTab } from './tabs/LocaisTab'
 import { BottomTabs, type Tab } from './components/BottomTabs'
 import { EventDetail } from './components/EventDetail'
 import { FilterSheet } from './components/FilterSheet'
@@ -63,7 +64,7 @@ export default function App() {
   )
   const festas = <FestasTab events={filtered} filters={filters} dispatch={dispatch} onOpen={openEvent}
                             activeCount={activeCount} onOpenSheet={() => setSheetOpen(true)} />
-  const locais = <div className="empty" style={{ paddingTop: 80 }}>LOCAIS — em breve (Plano C-2)</div>
+  const locais = <LocaisTab venues={venues} events={events} onOpenEvent={openEvent} />
 
   if (error) {
     return (
