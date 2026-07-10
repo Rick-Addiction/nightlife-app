@@ -205,3 +205,25 @@ def test_discover_venue_tag_osm_vence_o_site_do_banco(session):
         session, osm_tags_by_url={"https://osm.org/node/9": {"contact:instagram": "clubey"}},
         fetch=fetch)
     assert n == 1 and v.instagram == "clubey"
+
+
+def test_discover_venue_site_dominio_pelado_vai_pro_fetch(session):
+    # website sem esquema ("selva.club") NAO pode virar handle (canonical_handle
+    # cru aceitaria); tem que ir pro fetch como site normal
+    v = Venue(name="Selva Club", website="selva.club")
+    session.add(v)
+    session.flush()
+    html = '<a href="https://www.instagram.com/selva.011/">IG</a>'
+    n = discover_venue_handles(session, osm_tags_by_url={}, fetch=lambda url: html)
+    assert n == 1 and v.instagram == "selva.011"   # via fetch, nao via dominio
+
+
+def test_discover_venue_website_ig_nao_perfil_nao_vira_handle(session):
+    # /invites/... e URL do IG mas NAO e perfil: nem handle, nem fetch
+    v = Venue(name="Garage", website="https://www.instagram.com/invites/contact/?i=abc")
+    session.add(v)
+    session.flush()
+    def fetch(url):
+        raise AssertionError("nao deveria fazer fetch de instagram.com")
+    n = discover_venue_handles(session, osm_tags_by_url={}, fetch=fetch)
+    assert n == 0 and v.instagram is None

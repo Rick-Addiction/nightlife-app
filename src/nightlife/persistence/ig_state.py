@@ -61,7 +61,10 @@ def record_failure(state: IgProfileState) -> None:
 
 
 _SP_TZ = ZoneInfo("America/Sao_Paulo")
-_HOT_SHARE = 0.7   # cota da rodada reservada aos quentes (decisao do spec: 70/30)
+# cota da rodada reservada aos quentes (decisao do spec: 70/30). NB: com
+# cap <= 3, ceil(cap*0.7) == cap — os frios so entram se faltar quente
+# (nao reduza IG_MAX_PROFILES_PER_RUN abaixo de ~6 esperando rotacao fria).
+_HOT_SHARE = 0.7
 
 
 def _hot_handles(session: Session) -> set[str]:

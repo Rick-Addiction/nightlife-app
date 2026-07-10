@@ -169,3 +169,20 @@ def test_scrape_incremental_sem_novos_ainda_reporta_latest(tmp_path):
     )
     assert result.downloaded == 0
     assert result.latest_post_at == datetime.fromtimestamp(1751500000, tz=timezone.utc)
+
+
+def test_latest_post_at_ignora_post_fixado_antigo(tmp_path):
+    # post FIXADO fica no topo com data velha; o sinal de vida e o MAIS RECENTE
+    posts = [
+        IgPost(shortcode="PIN11111111", image_url="http://x/p.jpg", caption=None,
+               taken_at=1600000000),                      # fixado, 2020
+        IgPost(shortcode="NEW11111111", image_url="http://x/n.jpg", caption=None,
+               taken_at=1751500000),                      # post real recente
+    ]
+    result = scrape_handle(
+        "clube", last_shortcode=None,
+        fetch_posts=lambda h: posts,
+        download=lambda p, d: d.write_bytes(b"x") or d,
+        config=ScrapeConfig(inbox=tmp_path, cap=10),
+    )
+    assert result.latest_post_at == datetime.fromtimestamp(1751500000, tz=timezone.utc)

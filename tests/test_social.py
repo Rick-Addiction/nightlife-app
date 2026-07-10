@@ -49,3 +49,10 @@ def test_handle_from_jsonld_varre_sameas():
     assert handle_from_jsonld({"sameAs": "https://instagram.com/soloig"}) == "soloig"
     assert handle_from_jsonld({"@graph": [{"sameAs": ["https://instagram.com/deep"]}]}) == "deep"
     assert handle_from_jsonld({"name": "sem redes"}) is None
+
+
+def test_canonical_handle_rejeita_paths_nao_perfil_novos():
+    from nightlife.extraction.social import canonical_handle
+    assert canonical_handle("https://www.instagram.com/invites/contact/?i=x") is None
+    assert canonical_handle("https://instagram.com/share/abc") is None
+    assert canonical_handle("https://instagram.com/locations/123/sp") is None

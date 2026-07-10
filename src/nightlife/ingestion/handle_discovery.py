@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 from ..domain.nightlife_relevance import is_buffet_name, is_platform_handle
 from ..extraction.jsonld import _iter_jsonld
 from ..extraction.social import (
-    canonical_handle, handle_from_jsonld, handle_from_osm_tags, ig_handles_from_urls,
+    _IG_URL, _handle_if_ig_url, handle_from_jsonld, handle_from_osm_tags,
+    ig_handles_from_urls,
 )
 from ..models import Event, EventSource, Organizer, Venue, VenueSource
 
@@ -68,12 +69,17 @@ def discover_venue_handles(
         # e fonte; a tag OSM tem precedencia quando existe
         fetch_url = website or v.website
         if handle is None and fetch_url:
-            handle = canonical_handle(fetch_url)   # site que JA e um perfil de IG
-        if handle is None and fetch_url:
-            try:
-                handle = handle_from_html(fetch(fetch_url))
-            except Exception as exc:  # noqa: BLE001 — fetch best-effort, nao fatal
-                _log.warning("fetch de %s falhou: %s", fetch_url, exc)
+            if _IG_URL.search(fetch_url):
+                # o "site" e uma URL do proprio instagram: ou e perfil (handle
+                # direto, GUARDADO — canonical_handle cru aceitaria dominio
+                # pelado tipo 'selva.club' como handle), ou nao-perfil
+                # (/invites/...) — e fetch de instagram.com nunca vale a pena
+                handle = _handle_if_ig_url(fetch_url)
+            else:
+                try:
+                    handle = handle_from_html(fetch(fetch_url))
+                except Exception as exc:  # noqa: BLE001 — fetch best-effort, nao fatal
+                    _log.warning("fetch de %s falhou: %s", fetch_url, exc)
         if handle and not is_platform_handle(handle):
             v.instagram = handle
             count += 1

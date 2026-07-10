@@ -138,9 +138,10 @@ def scrape_handle(
     Playwright real vem na Task 9; aqui a logica e testada com fakes."""
     config.inbox.mkdir(parents=True, exist_ok=True)
     posts = fetch_posts(handle)
-    # topo do timeline e visto em TODA varredura (mesmo incremental sem download):
-    # vira o sinal de vida do venue (ig_last_post_at)
-    ts = next((p.taken_at for p in posts if p.taken_at), None)
+    # o timeline e visto em TODA varredura (mesmo incremental sem download):
+    # vira o sinal de vida do venue (ig_last_post_at). max(), NAO o primeiro:
+    # post FIXADO fica no topo com data antiga e falsearia o sinal
+    ts = max((p.taken_at for p in posts if p.taken_at), default=None)
     latest_post_at = datetime.fromtimestamp(ts, tz=timezone.utc) if ts else None
     fresh = new_posts(posts, last_shortcode=last_shortcode, cap=config.cap)
     downloaded = 0
