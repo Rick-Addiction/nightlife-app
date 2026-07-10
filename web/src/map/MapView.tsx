@@ -70,12 +70,12 @@ export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
         <Source id="venues-src" type="geojson" data={venuesFC}>
           <Layer id="venue-dots" type="circle" paint={{
             'circle-radius': 3.5,
-            'circle-color': '#5a6b8a',
-            'circle-opacity': 0.7,
+            'circle-color': '#00ff85',
+            'circle-opacity': 0.45,
           }} />
           <Layer id="venue-sel" type="circle"
                  filter={['==', ['get', 'id'], selVenue?.id ?? -1]}
-                 paint={{ 'circle-radius': 7, 'circle-color': '#8fb0ff', 'circle-opacity': 0.95 }} />
+                 paint={{ 'circle-radius': 7, 'circle-color': '#00ff85', 'circle-opacity': 0.95 }} />
         </Source>
       )}
 
@@ -83,9 +83,9 @@ export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
         <Marker key={e.id} longitude={e.lng!} latitude={e.lat!} anchor="bottom"
                 onClick={(ev) => { ev.originalEvent.stopPropagation(); onSelect(e.id); setPopupId(e.id) }}>
           <div style={{
-            width: 12, height: 12, borderRadius: '50%',
-            background: e.id === selectedId ? '#e055c0' : '#22e0e0',
-            boxShadow: `0 0 8px ${e.id === selectedId ? '#e055c0' : '#22e0e0'}`,
+            width: 13, height: 13,
+            background: e.id === selectedId ? 'var(--green)' : 'var(--pink)',
+            transform: 'rotate(45deg)', border: '2px solid #000',
             cursor: 'pointer',
           }} />
         </Marker>
