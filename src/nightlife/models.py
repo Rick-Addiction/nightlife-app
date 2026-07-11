@@ -1,11 +1,12 @@
 # src/nightlife/models.py
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     JSON, DateTime, Float, ForeignKey, Integer, String, Text, func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -143,3 +144,22 @@ class GeocodeCache(Base):
     lat: Mapped[float | None] = mapped_column(Float, default=None)
     lng: Mapped[float | None] = mapped_column(Float, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AreaSweep(Base):
+    __tablename__ = "area_sweeps"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    label: Mapped[str | None] = mapped_column(String(100), default=None)   # ex. "augusta"
+    center_lat: Mapped[float] = mapped_column(Float)
+    center_lng: Mapped[float] = mapped_column(Float)
+    radius_km: Mapped[float] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(20), default="running")     # running|done|error
+    phase: Mapped[str] = mapped_column(String(20), default="iniciando")    # iniciando|varrendo|extraindo|done
+    total_handles: Mapped[int] = mapped_column(Integer, default=0)
+    pid: Mapped[int | None] = mapped_column(Integer, default=None)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
+                                                 default=lambda: datetime.now(timezone.utc))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    report: Mapped[list] = mapped_column(JSONB, default=list)   # [{venue_id, venue_name, handle, status, posts_novos, flyers, festas}]
+    diff: Mapped[dict | None] = mapped_column(JSONB, default=None)
+    error: Mapped[str | None] = mapped_column(Text, default=None)
