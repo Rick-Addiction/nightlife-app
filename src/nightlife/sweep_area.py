@@ -217,6 +217,7 @@ def main(argv: list[str] | None = None) -> None:
                     # precisar de SQL manual pra destravar.
                     running.status = "error"
                     running.error = "run abandonado (stale > 6h)"
+                    running.finished_at = datetime.now(timezone.utc)
                     session.commit()
                 else:
                     raise SystemExit(f"ja existe varredura rodando (#{running.id}) — aguarde ou "

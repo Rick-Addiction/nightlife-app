@@ -79,3 +79,25 @@ def test_get_current_404_sem_nenhum(session):
         assert client.get("/admin/area-sweeps/current").status_code == 404
     finally:
         app.dependency_overrides.clear()
+
+
+def test_post_spawn_falhando_marca_error_e_devolve_500(session, monkeypatch):
+    def _boom(sweep_id):
+        raise OSError("interpreter sumiu")
+    monkeypatch.setattr("nightlife.api.main._spawn_sweep", _boom)
+    client = _client(session)
+    try:
+        r = client.post("/admin/area-sweeps", json={"lat": -23.5, "lng": -46.6, "km": 2.0})
+        assert r.status_code == 500
+        sw = session.scalars(
+            __import__("sqlalchemy").select(AreaSweep).order_by(AreaSweep.id.desc())
+        ).first()
+        assert sw.status == "error"
+        assert "spawn" in (sw.error or "")
+        assert sw.finished_at is not None
+        # lock liberado: um POST novo funciona
+        monkeypatch.setattr("nightlife.api.main._spawn_sweep", lambda sweep_id: 77)
+        assert client.post("/admin/area-sweeps",
+                           json={"lat": -23.5, "lng": -46.6, "km": 2.0}).status_code == 202
+    finally:
+        app.dependency_overrides.clear()

@@ -240,6 +240,7 @@ def start_area_sweep(body: AreaSweepIn, session: Session = Depends(get_session))
             # de energia); staleness e a valvula de escape sem SQL manual.
             running.status = "error"
             running.error = "run abandonado (stale > 6h)"
+            running.finished_at = datetime.now(timezone.utc)
             session.commit()
         else:
             raise HTTPException(status_code=409,
@@ -259,7 +260,14 @@ def start_area_sweep(body: AreaSweepIn, session: Session = Depends(get_session))
         raise HTTPException(status_code=409,
                             detail=f"varredura #{still_running.id} ja esta rodando")
     session.commit()  # commit ANTES do spawn: o filho faz session.get imediatamente
-    sweep.pid = _spawn_sweep(sweep.id)
+    try:
+        sweep.pid = _spawn_sweep(sweep.id)
+    except Exception as exc:  # noqa: BLE001 — spawn falhou: nao deixar o lock preso 6h
+        sweep.status = "error"
+        sweep.error = f"spawn falhou: {exc}"[:500]
+        sweep.finished_at = datetime.now(timezone.utc)
+        session.commit()
+        raise HTTPException(status_code=500, detail=f"nao consegui iniciar o runner: {exc}")
     session.commit()
     return {"id": sweep.id}
 
