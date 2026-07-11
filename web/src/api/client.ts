@@ -24,8 +24,18 @@ export function buildQuery(params: Record<string, string | number | boolean | un
   return parts.length ? `?${parts.join('&')}` : ''
 }
 
-async function getJson<T>(url: string): Promise<T> {
+export async function getJson<T>(url: string): Promise<T> {
   const resp = await fetch(url)
+  if (!resp.ok) throw new Error(`API ${resp.status} em ${url}`)
+  return resp.json() as Promise<T>
+}
+
+export async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
   if (!resp.ok) throw new Error(`API ${resp.status} em ${url}`)
   return resp.json() as Promise<T>
 }
