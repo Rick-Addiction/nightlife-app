@@ -11,6 +11,7 @@ export function acoesLabel(acoes?: SweepAcoes): string {
     acoes.update ? `~${acoes.update}` : null,
     acoes.cancel ? `✕${acoes.cancel}` : null,
     acoes.cancel_candidate ? `?${acoes.cancel_candidate}` : null,
+    acoes.update_candidate ? `~?${acoes.update_candidate}` : null,
     ignoreTotal ? `ign ${ignoreTotal}` : null,
   ].filter((p): p is string => p !== null)
   return partes.length ? partes.join(' · ') : '—'

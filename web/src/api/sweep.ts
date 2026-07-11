@@ -2,7 +2,7 @@ import { getJson, postJson } from './client'
 
 export interface SweepFesta { event_id: number; name: string; starts_at: string | null; anchored: boolean }
 export interface SweepAcoes {
-  add?: number; cancel?: number; update?: number; cancel_candidate?: number
+  add?: number; cancel?: number; update?: number; cancel_candidate?: number; update_candidate?: number
   ignore?: Record<string, number>
 }
 export interface SweepItem {

@@ -138,3 +138,26 @@ def test_context_for_futuro_nao_e_starvado_por_passado(session):
     ctx = _context_for(session, "selva.011", date.today())
 
     assert {n for n, _ in ctx.known_events} == {"FUTURA 1", "FUTURA 2"}
+
+
+def test_erro_de_db_no_meio_propaga_original_e_run_vira_error(session, tmp_path, monkeypatch):
+    # probe do review: excecao de DB abortava a transacao e o commit do finally
+    # MASCARAVA o erro original, deixando o run preso em 'running'
+    from sqlalchemy import text as _text
+    from nightlife.persistence import action_executor as ae
+
+    _post(tmp_path, "BOOM")
+    fake = FakeInterpreter({"BOOM": PostInterpretation(actions=[Ignore(reason="sem_evento")])})
+
+    def bad_execute(sess, doc, interp, *, reference):
+        sess.execute(_text("SELECT * FROM tabela_que_nao_existe"))
+
+    # process_inbox importa execute_actions DENTRO da funcao: patch no modulo de origem
+    monkeypatch.setattr(ae, "execute_actions", bad_execute)
+    import pytest as _pytest
+    from sqlalchemy.exc import ProgrammingError
+    with _pytest.raises(ProgrammingError):        # o erro ORIGINAL, nao o mascarado
+        process_inbox(session, tmp_path, fake, reference=REF)
+    run = session.query(IngestionRun).order_by(IngestionRun.id.desc()).first()
+    assert run.status == "error"
+    assert "tabela_que_nao_existe" in (run.errors or "")

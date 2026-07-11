@@ -146,6 +146,12 @@ def process_inbox(session: Session, inbox: Path, interpreter: PostInterpreter,
         run.records_found = found
         run.records_created = flow.created
     except Exception as exc:
+        # licao do sweep_area (B2): transacao falha inutiliza a sessao — sem o
+        # rollback, o commit do finally estoura DENTRO do except e MASCARA o
+        # erro original, e o run fica preso em 'running'
+        session.rollback()
+        if run not in session:   # falha antes do 1o commit: rollback expulsou o run pendente
+            session.add(run)
         run.status = "error"
         run.errors = str(exc)[:500]
         raise

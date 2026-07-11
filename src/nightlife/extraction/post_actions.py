@@ -10,8 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 
 IgnoreReason = Literal["aula", "aniversario", "institucional", "esporte",
                        "repost", "sem_evento", "outro"]
-_IGNORE_REASONS = frozenset(
-    ("aula", "aniversario", "institucional", "esporte", "repost", "sem_evento", "outro"))
+_IGNORE_REASONS = frozenset(get_args(IgnoreReason))  # derivado do Literal: sem drift
 
 
 class AddEvent(BaseModel):
