@@ -15,6 +15,7 @@ vi.mock('../api/sweep', () => ({
 
 import { MapaTab, visibleVenues } from './MapaTab'
 import { initialFilters } from '../filters/state'
+import { fetchCurrentSweep, type SweepOut } from '../api/sweep'
 
 const NOW = new Date(2026, 6, 10, 22, 0)
 
@@ -74,5 +75,36 @@ describe('MapaTab', () => {
     expect(last.onPickPoint).toBeDefined()
     act(() => last.onPickPoint!(-23.553, -46.656))
     expect(await screen.findByRole('button', { name: /VARRER \d+ PERFIS/ })).toBeInTheDocument()
+  })
+  it('poll do sweep dispara onDataStale uma vez quando o run termina (W8)', async () => {
+    vi.useFakeTimers()
+    try {
+      const onDataStale = vi.fn()
+      const running: SweepOut = {
+        id: 1, label: null, status: 'running', phase: 'varrendo', total_handles: 10,
+        done_handles: 3, report: [], diff: null, error: null,
+        started_at: '2026-07-10T20:00:00Z', finished_at: null,
+      }
+      const done: SweepOut = {
+        ...running, status: 'done', phase: 'done', done_handles: 10,
+        diff: { novas_festas: 1, venues_com_pin_novo: [] }, finished_at: new Date().toISOString(),
+      }
+      vi.mocked(fetchCurrentSweep).mockReset()
+      vi.mocked(fetchCurrentSweep)
+        .mockResolvedValueOnce(running)
+        .mockResolvedValueOnce(done)
+
+      render(<MapaTab {...base} onDataStale={onDataStale} />)
+      await act(async () => { await Promise.resolve() })  // deixa o 1o tick (running) resolver
+      expect(onDataStale).not.toHaveBeenCalled()
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+
+      expect(onDataStale).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+      vi.mocked(fetchCurrentSweep).mockReset()
+      vi.mocked(fetchCurrentSweep).mockImplementation(async () => { throw new Error('404') })
+    }
   })
 })

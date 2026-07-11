@@ -15,6 +15,9 @@ export function circleGeoJSON(lat: number, lng: number, km: number, steps = 64):
   return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [ring] } }
 }
 
+// W6: contagem client-side é APROXIMADA — so filtra por raio/ter instagram.
+// O servidor ainda tira venue de plataforma/pausado/buffet da varredura real;
+// o total definitivo de handles varridos vem no total_handles do proprio run.
 export function handlesInCircle(venues: VenueOut[], lat: number, lng: number, km: number): number {
   return venues.filter((v) =>
     v.instagram != null && v.lat != null && v.lng != null &&

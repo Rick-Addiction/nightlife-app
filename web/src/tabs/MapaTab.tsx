@@ -16,6 +16,15 @@ import { handlesInCircle } from '../map/sweep'
 
 export interface Layers { festas: boolean; locais: boolean; hojeOnly: boolean }
 
+// W5: um sweep done/error muito antigo nao deve reaparecer pra sempre a cada
+// load do app (o /current so devolve o ULTIMO sweep, seja de quando for).
+const SWEEP_BANNER_MAX_AGE_MS = 86_400_000
+function freshOrNull(s: SweepOut): SweepOut | null {
+  if (s.status === 'running') return s
+  if (s.finished_at && Date.now() - new Date(s.finished_at).getTime() < SWEEP_BANNER_MAX_AGE_MS) return s
+  return null
+}
+
 export function visibleVenues(
   venues: VenueOut[], events: EventWithGeo[], layers: Layers, now: Date = new Date(),
 ): VenueOut[] {
@@ -45,22 +54,33 @@ export function MapaTab({ events, venues, filters, dispatch, selectedId, onSelec
   const [sweep, setSweep] = useState<SweepOut | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
   const [postError, setPostError] = useState<string | null>(null)
+  const [posting, setPosting] = useState(false)
 
   // poll do sweep corrente enquanto rodando; ao terminar, dispara onDataStale
   // pro App rebuscar eventos/venues (o sweep pode ter criado festas/pins novos)
   const sweepRef = useRef(sweep)
   useEffect(() => { sweepRef.current = sweep }, [sweep])
+  // W1: App passa uma lambda inline (identidade nova a cada render) — se ela
+  // fosse dep do effect, o interval seria destruido/recriado a cada render do
+  // App. Guardamos so a versao mais recente numa ref e deixamos o effect com
+  // deps vazio (monta o interval uma unica vez).
+  const onDataStaleRef = useRef(onDataStale)
+  useEffect(() => { onDataStaleRef.current = onDataStale })
   useEffect(() => {
     let alive = true
     const tick = async () => {
       try {
         const s = await fetchCurrentSweep()
         if (!alive) return
-        setSweep((prev) => {
-          if (prev?.status === 'running' && s.status !== 'running') onDataStale()
-          return s
-        })
-      } catch { /* 404 = nunca varreu; silencio */ }
+        // W2: compara ANTES de chamar setSweep — o updater tem que ser puro
+        // (StrictMode chama updaters 2x em dev) — e onDataStale roda FORA dele.
+        const wasRunning = sweepRef.current?.status === 'running'
+        setSweep(freshOrNull(s))
+        if (wasRunning && s.status !== 'running') onDataStaleRef.current()
+      } catch (e) {
+        // W7: 404 (nunca varreu) e silencioso; qualquer outro erro é logado.
+        if (!(e instanceof Error) || !e.message.includes('404')) console.warn('sweep poll:', e)
+      }
     }
     tick()
     const id = setInterval(() => {
@@ -68,7 +88,7 @@ export function MapaTab({ events, venues, filters, dispatch, selectedId, onSelec
       if (sweepRef.current?.status === 'running') tick()
     }, 5000)
     return () => { alive = false; clearInterval(id) }
-  }, [onDataStale])
+  }, [])
 
   const count = typeof sweepUi === 'object'
     ? handlesInCircle(venues, sweepUi.lat, sweepUi.lng, sweepUi.km) : 0
@@ -112,11 +132,12 @@ export function MapaTab({ events, venues, filters, dispatch, selectedId, onSelec
         </div>
       )}
 
-      <SweepPanel mode={sweepUi} count={count} sweep={sweep}
+      <SweepPanel mode={sweepUi} count={count} sweep={sweep} posting={posting}
                   onConfirm={async () => {
                     if (typeof sweepUi !== 'object') return
                     const c = sweepUi
                     setPostError(null)
+                    setPosting(true)
                     try {
                       await startSweep(c.lat, c.lng, c.km)
                       setSweepUi('idle')
@@ -126,6 +147,8 @@ export function MapaTab({ events, venues, filters, dispatch, selectedId, onSelec
                       if (first) setSweep(first)
                     } catch (e) {
                       setPostError(String(e instanceof Error ? e.message : e))
+                    } finally {
+                      setPosting(false)
                     }
                   }}
                   onCancel={() => {

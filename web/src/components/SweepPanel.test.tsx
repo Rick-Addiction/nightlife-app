@@ -13,6 +13,10 @@ const doneSweep: SweepOut = {
   ...runningSweep, status: 'done', phase: 'done', done_handles: 66,
   diff: { novas_festas: 9, venues_com_pin_novo: ['Aura', 'Selva Club'] }, finished_at: '2026-07-10T21:00:00Z',
 }
+const erroredSweep: SweepOut = {
+  ...runningSweep, status: 'error', error: 'processo morto', diff: null,
+  finished_at: '2026-07-10T20:05:00Z',
+}
 
 describe('SweepPanel', () => {
   it('confirmacao mostra contagem e dispara onConfirm com o raio do slider', async () => {
@@ -36,5 +40,11 @@ describe('SweepPanel', () => {
     expect(screen.getByText(/\+2 LOCAIS COM PIN/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'RELATÓRIO' }))
     expect(onOpenReport).toHaveBeenCalled()
+  })
+  it('erro mostra a mensagem em destaque e ainda da acesso ao relatorio (W3)', () => {
+    render(<SweepPanel mode="idle" count={0} sweep={erroredSweep}
+                       onConfirm={() => {}} onCancel={() => {}} onKm={() => {}} onOpenReport={() => {}} />)
+    expect(screen.getByText(/FALHOU|processo morto/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'RELATÓRIO' })).toBeInTheDocument()
   })
 })

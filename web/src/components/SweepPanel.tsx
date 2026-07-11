@@ -4,10 +4,11 @@ export type SweepMode = 'idle' | 'picking' | { lat: number; lng: number; km: num
 
 // painel flutuante do fluxo de varredura: confirmacao (circulo escolhido),
 // progresso (poll) e diff final com acesso ao relatorio
-export function SweepPanel({ mode, count, sweep, onConfirm, onCancel, onKm, onOpenReport }: {
+export function SweepPanel({ mode, count, sweep, onConfirm, onCancel, onKm, onOpenReport, posting }: {
   mode: SweepMode; count: number; sweep: SweepOut | null
   onConfirm: () => void; onCancel: () => void
   onKm: (km: number) => void; onOpenReport: () => void
+  posting?: boolean
 }) {
   const wrap: React.CSSProperties = {
     position: 'absolute', left: 10, right: 10, bottom: 76, zIndex: 15,
@@ -22,7 +23,7 @@ export function SweepPanel({ mode, count, sweep, onConfirm, onCancel, onKm, onOp
                style={{ width: '100%', accentColor: 'var(--pink)' }} />
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button className="b-btn" style={{ width: 100 }} onClick={onCancel}>CANCELAR</button>
-          <button className="b-btn primary" style={{ flex: 1 }} onClick={onConfirm}>
+          <button className="b-btn primary" style={{ flex: 1 }} onClick={onConfirm} disabled={posting}>
             {`VARRER ${count} PERFIS →`}
           </button>
         </div>
@@ -40,7 +41,18 @@ export function SweepPanel({ mode, count, sweep, onConfirm, onCancel, onKm, onOp
       </div>
     )
   }
-  if (sweep && (sweep.status === 'done' || sweep.status === 'error') && sweep.diff) {
+  // W3: erro tem prioridade sobre o diff — mesmo que diff exista (extracao
+  // falhou depois de casar alguns flyers), o usuario precisa ver que quebrou.
+  if (sweep?.status === 'error') {
+    return (
+      <div style={{ ...wrap, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span className="label" style={{ color: 'var(--pink)' }}>{sweep.error || 'FALHOU'}</span>
+        <button className="chip grn" style={{ marginLeft: 'auto' }} onClick={onOpenReport}>RELATÓRIO</button>
+        <button className="chip" onClick={onCancel}>✕</button>
+      </div>
+    )
+  }
+  if (sweep?.status === 'done' && sweep.diff) {
     return (
       <div style={{ ...wrap, display: 'flex', alignItems: 'center', gap: 10 }}>
         <span className="label" style={{ color: 'var(--green)' }}>
