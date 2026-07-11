@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch } from 'react'
 import { MapView } from '../map/MapView'
 import { Drawer } from '../components/Drawer'
@@ -93,9 +93,13 @@ export function MapaTab({ events, venues, filters, dispatch, selectedId, onSelec
   const count = typeof sweepUi === 'object'
     ? handlesInCircle(venues, sweepUi.lat, sweepUi.lng, sweepUi.km) : 0
 
+  // sem data = DATA A CONFIRMAR: nao tem quando pinar no mapa, mas segue
+  // visivel na gaveta (Drawer/label usam `events` cheio, nao `mapEvents`)
+  const mapEvents = useMemo(() => events.filter((e) => e.starts_at != null), [events])
+
   return (
     <div style={{ position: 'relative', height: '100%' }}>
-      <MapView events={layers.festas ? events : []}
+      <MapView events={layers.festas ? mapEvents : []}
                venues={visibleVenues(venues, events, layers)}
                selectedId={selectedId} onSelect={onSelect} showVenues={layers.locais}
                onPickPoint={sweepUi === 'picking'

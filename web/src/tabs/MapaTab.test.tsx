@@ -68,6 +68,14 @@ describe('MapaTab', () => {
     render(<MapaTab {...base} />)
     expect(screen.getByText(/1 FESTA NA ÁREA/)).toBeInTheDocument()
   })
+  it('evento sem data nao vira marker no mapa (mas segue na gaveta)', () => {
+    const dated = evt(1, 10, new Date(2026, 6, 10, 23, 0).toISOString())
+    const undated = { ...evt(2, 10, new Date().toISOString()), starts_at: null } as EventWithGeo
+    render(<MapaTab {...base} events={[dated, undated]} />)
+    const last = mapProps.mock.calls.at(-1)![0] as { events: { id: number }[] }
+    expect(last.events.map((e) => e.id)).toEqual([1])
+    expect(screen.getByText(/2 FESTAS NA ÁREA/)).toBeInTheDocument()
+  })
   it('botao VARRER AREA entra em modo alvo e o clique confirma o circulo', async () => {
     render(<MapaTab {...base} />)
     await userEvent.click(screen.getByRole('button', { name: '⌖ VARRER ÁREA' }))

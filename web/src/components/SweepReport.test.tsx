@@ -24,4 +24,11 @@ describe('SweepReport', () => {
     expect(screen.getByText('✓')).toBeInTheDocument()      // ancorada
     expect(screen.getByText('FALHA')).toBeInTheDocument()  // status do quebrado
   })
+
+  it('linha mostra o resumo de acoes quando presente', () => {
+    const withAcoes = { ...sweep, report: [{ ...sweep.report[0],
+      acoes: { add: 3, cancel: 1, ignore: { esporte: 2 } } }] }
+    render(<SweepReport sweep={withAcoes} onClose={() => {}} />)
+    expect(screen.getByText(/\+3 · ✕1 · ign 2/)).toBeInTheDocument()
+  })
 })

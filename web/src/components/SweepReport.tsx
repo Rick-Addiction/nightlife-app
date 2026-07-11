@@ -1,4 +1,11 @@
-import type { SweepOut } from '../api/sweep'
+import type { SweepAcoes, SweepOut } from '../api/sweep'
+
+export function acoesLabel(acoes?: SweepAcoes): string {
+  if (!acoes) return '—'
+  const ignoreTotal = acoes.ignore
+    ? Object.values(acoes.ignore).reduce((a, b) => a + b, 0) : 0
+  return `+${acoes.add ?? 0} · ✕${acoes.cancel ?? 0} · ign ${ignoreTotal}`
+}
 
 export function SweepReport({ sweep, onClose }: { sweep: SweepOut; onClose: () => void }) {
   return (
@@ -18,7 +25,7 @@ export function SweepReport({ sweep, onClose }: { sweep: SweepOut; onClose: () =
             <thead>
               <tr className="label" style={{ textAlign: 'left' }}>
                 <th style={{ padding: 4 }}>LOCAL</th><th>HANDLE</th><th>STATUS</th>
-                <th>POSTS</th><th>FLYERS</th><th>FESTAS CRIADAS</th>
+                <th>POSTS</th><th>FLYERS</th><th>FESTAS CRIADAS</th><th>AÇÕES</th>
               </tr>
             </thead>
             <tbody>
@@ -43,6 +50,7 @@ export function SweepReport({ sweep, onClose }: { sweep: SweepOut; onClose: () =
                       </div>
                     ))}
                   </td>
+                  <td style={{ padding: 4, color: 'var(--muted)' }}>{acoesLabel(i.acoes)}</td>
                 </tr>
               ))}
             </tbody>

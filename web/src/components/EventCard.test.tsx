@@ -38,4 +38,9 @@ describe('EventCard', () => {
     await userEvent.click(screen.getByText('Mamba Negra'))
     expect(onOpen).toHaveBeenCalledWith(e)
   })
+
+  it('sem starts_at mostra a tag DATA A CONFIRMAR', () => {
+    render(<EventCard event={ev({ starts_at: null })} variant="row" onOpen={() => {}} />)
+    expect(screen.getByText('DATA A CONFIRMAR')).toBeInTheDocument()
+  })
 })

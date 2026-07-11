@@ -23,6 +23,7 @@ export function EventCard({ event, variant, onOpen }: {
           <div className="title" style={{ fontSize: 19 }}>{event.name}</div>
           <div className="meta">{meta}</div>
           <div style={{ marginTop: 7 }}>
+            {!event.starts_at && <span className="tag ghost">DATA A CONFIRMAR</span>}
             {event.genre && <span className="tag">{event.genre}</span>}
             {event.ticket_url && <span className="tag ghost">ticket</span>}
           </div>
@@ -41,6 +42,7 @@ export function EventCard({ event, variant, onOpen }: {
       <div style={{ minWidth: 0 }}>
         <div className="title">{event.name}</div>
         <div className="meta">{meta}{!event.mappable && ' · LOCAL A CONFIRMAR'}</div>
+        {!event.starts_at && <span className="tag ghost">DATA A CONFIRMAR</span>}
       </div>
       <span className="conf">{event.effective_confidence}</span>
     </div>
