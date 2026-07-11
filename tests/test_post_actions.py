@@ -52,3 +52,12 @@ def test_sanitize_cancel_update_exigem_quote_e_confianca():
 def test_ignore_sempre_passa():
     interp = PostInterpretation(actions=[Ignore(reason="esporte", note="jogo do brasil")])
     assert len(sanitize_actions(interp).actions) == 1
+
+
+def test_ignore_reason_desconhecido_vira_outro():
+    # B7: reason fora do Literal (modelo alucinou uma categoria nova) nao
+    # pode derrubar o post inteiro com ValidationError.
+    assert Ignore.model_validate({"type": "ignore", "reason": "meme"}).reason == "outro"
+    interp = PostInterpretation.model_validate({"actions": [
+        {"type": "ignore", "reason": "meme"}]})
+    assert interp.actions[0].reason == "outro"

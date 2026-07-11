@@ -1,12 +1,12 @@
 # tests/test_post_flow.py
 import json
 import shutil
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from PIL import Image
 
 from nightlife.extraction.post_actions import AddEvent, Ignore, PostInterpretation
-from nightlife.ingestion.post_flow import process_inbox
+from nightlife.ingestion.post_flow import _context_for, process_inbox
 from nightlife.models import Event, IngestionRun, Venue
 
 REF = date(2026, 7, 11)
@@ -69,6 +69,14 @@ def test_process_inbox_interpreta_executa_e_separa_paths(session, tmp_path):
     # legenda do sidecar repassada ao Document (equivalente ao antigo
     # FlyerSource::test_le_sidecar_e_passa_caption_e_permalink)
     assert fake.calls[0][0].caption == "legenda"
+    # B4: cada post e movido pro processed/failed IMEDIATAMENTE apos seu
+    # commit, nao acumulado ate o fim do inbox inteiro.
+    assert (tmp_path / "processed" / "OK1.jpg").exists()
+    assert (tmp_path / "processed" / "OK1.json").exists()
+    assert (tmp_path / "processed" / "IGN1.jpg").exists()
+    assert (tmp_path / "failed" / "FAIL1.jpg").exists()
+    assert not (tmp_path / "OK1.jpg").exists()
+    assert not (tmp_path / "FAIL1.jpg").exists()
 
 
 def test_process_inbox_permalink_vira_source_url_e_sem_permalink_usa_hash(session, tmp_path):
@@ -105,3 +113,28 @@ def test_process_inbox_dhash_dedupe_nao_reinterpreta(session, tmp_path):
     flow = process_inbox(session, tmp_path, fake, reference=REF)
     assert len(fake.calls) == 1                        # BBB nem chamou o interprete
     assert {p.stem for p in flow.processed_paths} == {"AAA", "BBB"}
+    # B4: duplicata tambem e movida (nao so a primeira ocorrencia)
+    assert (tmp_path / "processed" / "AAA.jpg").exists()
+    assert (tmp_path / "processed" / "BBB.jpg").exists()
+
+
+def test_context_for_futuro_nao_e_starvado_por_passado(session):
+    # B5: o filtro futuro-ou-sem-data precisa estar NO SQL antes do LIMIT —
+    # senao 20+ eventos passados enchem o limite e os futuros nunca aparecem.
+    v = Venue(name="Selva Club", instagram="selva.011", lat=-23.55, lng=-46.65, confidence=50)
+    session.add(v)
+    session.flush()
+    now = datetime.now(timezone.utc)
+    for i in range(25):
+        session.add(Event(name=f"PASSADA {i}", status="scheduled", confidence=40,
+                          venue_id=v.id, starts_at=now - timedelta(days=i + 1)))
+    fut1 = Event(name="FUTURA 1", status="scheduled", confidence=40, venue_id=v.id,
+                starts_at=now + timedelta(days=1))
+    fut2 = Event(name="FUTURA 2", status="scheduled", confidence=40, venue_id=v.id,
+                starts_at=now + timedelta(days=2))
+    session.add_all([fut1, fut2])
+    session.flush()
+
+    ctx = _context_for(session, "selva.011", date.today())
+
+    assert {n for n, _ in ctx.known_events} == {"FUTURA 1", "FUTURA 2"}

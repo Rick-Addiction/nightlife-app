@@ -210,6 +210,10 @@ def list_events(
 
 @app.get("/events/{event_id}", response_model=EventOut)
 def get_event(event_id: int, session: Session = Depends(get_session)):
+    # B10: diferente da listagem (que esconde cancelled), aqui devolve MESMO
+    # se cancelled — e um deep link direto (compartilhado, favoritado etc);
+    # esconder um evento que a pessoa ja tinha o link daria erro confuso onde
+    # o status "CANCELADA" seria a resposta certa (ver W2 na UI).
     event = session.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="evento nao encontrado")

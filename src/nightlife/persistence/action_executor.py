@@ -13,11 +13,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..domain.dates_ptbr import parse_ptbr_datetime
+from ..extraction.freetext import _clean_url, _is_generic_link
 from ..extraction.post_actions import (
     AddEvent, CancelEvent, Ignore, PostInterpretation, UpdateEvent,
 )
 from ..ingestion.pipeline import venue_by_handle
-from ..models import Event, VerificationLog
+from ..models import Event, VerificationLog, Venue
 from .events_repo import upsert_event
 from .inputs import EventInput, SourceInfo
 
@@ -39,15 +40,25 @@ def _sp_day(dt) -> "date":
     return dt.astimezone(_SP_TZ).date()
 
 
-def _match_event(session: Session, venue_id: int | None, name: str,
-                 date_text: str | None, *, reference: date) -> Event | None:
-    """Match forte: mesmo venue + nome normalizado igual + (mesmo dia-SP OU
-    candidato unico). Ambiguidade -> None (vira candidato, nunca chuta)."""
+def _name_candidates(session: Session, venue_id: int | None, name: str) -> list[Event]:
     if venue_id is None:
-        return None
-    candidates = [e for e in session.scalars(
+        return []
+    return [e for e in session.scalars(
         select(Event).where(Event.venue_id == venue_id, Event.status != "cancelled"))
         if _norm(e.name) == _norm(name)]
+
+
+def _match_event(session: Session, venue_id: int | None, name: str,
+                 date_text: str | None, *, reference: date,
+                 fallback_unique_when_dated: bool = False) -> Event | None:
+    """Match forte: mesmo venue + nome normalizado igual + (mesmo dia-SP OU
+    candidato unico). Ambiguidade -> None (vira candidato, nunca chuta).
+
+    fallback_unique_when_dated: so pra UpdateEvent (adiamento) — quando a
+    data informada nao bate com nenhum candidato do dia, mas so existe 1
+    candidato com esse nome, assume que e ele (a data antiga do post pode
+    estar levemente errada; cancel mantem o comportamento estrito)."""
+    candidates = _name_candidates(session, venue_id, name)
     if not candidates:
         return None
     if date_text:
@@ -57,23 +68,33 @@ def _match_event(session: Session, venue_id: int | None, name: str,
                         if e.starts_at is not None and _sp_day(e.starts_at) == _sp_day(alvo)]
             if len(same_day) == 1:
                 return same_day[0]
+            if fallback_unique_when_dated and len(candidates) == 1:
+                return candidates[0]
             return None
     return candidates[0] if len(candidates) == 1 else None
 
 
-def _do_add(session: Session, doc: "Document", a: AddEvent, *, reference: date) -> None:
+def _do_add(session: Session, doc: "Document", a: AddEvent, *,
+           venue: Venue | None, reference: date) -> None:
     starts = None
     if a.date_text:
         starts = parse_ptbr_datetime(a.date_text, reference=reference).dt
-    venue = venue_by_handle(session, doc.handle)
     raw_fields: dict = {"raw": a.model_dump_json()}
     if venue is not None:
         raw_fields["anchored_by"] = "ig_handle"
+    ticket_url = a.ticket_url
+    if ticket_url:
+        # B2: porta o gate do caminho antigo — link generico (linktr.ee,
+        # whatsapp, bio do IG etc) nao e ticket; guardar quebraria o dedupe,
+        # que trata ticket_url igual como prova de mesmo evento.
+        cleaned = _clean_url(ticket_url)
+        ticket_url = None if _is_generic_link(cleaned) else cleaned
     upsert_event(
         session,
         EventInput(name=a.name, starts_at=starts,
                    venue_id=venue.id if venue is not None else None,
-                   genre=a.genre, ticket_url=a.ticket_url,
+                   venue_name=venue.name if venue is not None else None,
+                   genre=a.genre, ticket_url=ticket_url,
                    lineup_text=", ".join(a.lineup) or None,
                    raw_fields=raw_fields),
         SourceInfo(source_type="vision_flyer", source_url=doc.permalink,
@@ -85,13 +106,13 @@ def _do_add(session: Session, doc: "Document", a: AddEvent, *, reference: date) 
 def execute_actions(session: Session, doc: "Document",
                     interp: PostInterpretation, *, reference: date) -> dict:
     stats: dict = {"add": 0, "cancel": 0, "cancel_candidate": 0,
-                   "update": 0, "ignore": {}}
+                   "update": 0, "update_candidate": 0, "ignore": {}}
     venue = venue_by_handle(session, doc.handle)
     vid = venue.id if venue is not None else None
 
     for a in interp.actions:
         if isinstance(a, AddEvent):
-            _do_add(session, doc, a, reference=reference)
+            _do_add(session, doc, a, venue=venue, reference=reference)
             stats["add"] += 1
         elif isinstance(a, CancelEvent):
             ev = _match_event(session, vid, a.event_name, a.event_date_text,
@@ -104,14 +125,14 @@ def execute_actions(session: Session, doc: "Document",
                 stats["cancel"] += 1
             else:
                 session.add(VerificationLog(
-                    entity_type="venue", entity_id=vid or 0,
+                    entity_type="venue", entity_id=vid or 0,  # 0 = sem venue resolvido; auditavel pela note
                     note=(f"cancel_candidate: {a.event_name!r} "
                           f"({a.event_date_text or 'sem data'}) via {doc.permalink} "
                           f"(quote: {a.quote!r}) — sem match forte")))
                 stats["cancel_candidate"] += 1
         elif isinstance(a, UpdateEvent):
             ev = _match_event(session, vid, a.event_name, a.event_date_text,
-                              reference=reference)
+                              reference=reference, fallback_unique_when_dated=True)
             if ev is not None:
                 if "date_text" in a.changes:
                     novo = parse_ptbr_datetime(a.changes["date_text"], reference=reference).dt
@@ -125,6 +146,16 @@ def execute_actions(session: Session, doc: "Document",
                     entity_type="event", entity_id=ev.id,
                     note=f"atualizado via ig_post {doc.permalink} (quote: {a.quote!r})"))
                 stats["update"] += 1
+            elif _name_candidates(session, vid, a.event_name):
+                # B3(iii): existe >=1 candidato com esse nome mas nenhum bate
+                # forte (data/ambiguidade) -> candidato auditavel, NUNCA vira
+                # add silenciosamente (evitaria criar duplicata da festa).
+                session.add(VerificationLog(
+                    entity_type="venue", entity_id=vid or 0,
+                    note=(f"update_candidate: {a.event_name!r} "
+                          f"({a.event_date_text or 'sem data'}) via {doc.permalink} "
+                          f"(quote: {a.quote!r}) — sem match forte")))
+                stats["update_candidate"] += 1
             else:
                 # "adiada para X" de festa que nao temos = festa nova com data X
                 add = AddEvent(name=a.changes.get("name", a.event_name),
@@ -132,7 +163,7 @@ def execute_actions(session: Session, doc: "Document",
                                ticket_url=a.changes.get("ticket_url"),
                                quotes={"name": a.quote or a.event_name},
                                confidence={"name": a.confidence})
-                _do_add(session, doc, add, reference=reference)
+                _do_add(session, doc, add, venue=venue, reference=reference)
                 stats["add"] += 1
         elif isinstance(a, Ignore):
             stats["ignore"][a.reason] = stats["ignore"].get(a.reason, 0) + 1

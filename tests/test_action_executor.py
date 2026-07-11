@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 
 from nightlife.extraction.post_actions import (
     AddEvent, CancelEvent, Ignore, PostInterpretation, UpdateEvent,
@@ -7,6 +8,8 @@ from nightlife.ingestion.post_interpreter import Document
 from nightlife.models import Event, VerificationLog, Venue
 from nightlife.persistence.action_executor import execute_actions
 from pathlib import Path
+
+_SP = ZoneInfo("America/Sao_Paulo")
 
 REF = date(2026, 7, 11)
 
@@ -103,3 +106,102 @@ def test_ignore_so_conta(session):
     stats = execute_actions(session, _doc(), interp, reference=REF)
     assert stats["ignore"] == {"esporte": 1}
     assert session.query(Event).count() == 0
+
+
+def test_add_mesma_acao_duas_vezes_nao_duplica(session):
+    # B1: _do_add sem venue_name capava o score do dedupe em 0.8 (nunca
+    # auto_merge) -> a mesma acao executada 2x criava 2 linhas de Event.
+    _venue(session)
+    interp = PostInterpretation(actions=[_add("NOITE 1", "SEX 18/07")])
+    execute_actions(session, _doc(), interp, reference=REF)
+    execute_actions(session, _doc(), interp, reference=REF)
+    assert session.query(Event).filter(Event.name == "NOITE 1").count() == 1
+
+
+def test_add_ticket_url_generico_vira_none_e_real_passa(session):
+    _venue(session)
+    generico = AddEvent(name="FESTA LINK", ticket_url="https://linktr.ee/venue",
+                        quotes={"name": "FESTA LINK", "ticket_url": "linktr.ee/venue"},
+                        confidence={"name": 0.9, "ticket_url": 0.9})
+    real = AddEvent(name="FESTA SYMPLA", ticket_url="https://www.sympla.com.br/evento/x",
+                    quotes={"name": "FESTA SYMPLA", "ticket_url": "sympla"},
+                    confidence={"name": 0.9, "ticket_url": 0.9})
+    interp = PostInterpretation(actions=[generico, real])
+    execute_actions(session, _doc(), interp, reference=REF)
+    ev_generico = session.query(Event).filter(Event.name == "FESTA LINK").one()
+    ev_real = session.query(Event).filter(Event.name == "FESTA SYMPLA").one()
+    assert ev_generico.ticket_url is None
+    assert ev_real.ticket_url == "https://www.sympla.com.br/evento/x"
+
+
+def test_update_data_antiga_erra_mas_candidato_unico_move_data(session):
+    # B3(ii): dated lookup nao bate (event_date_text errado/impreciso), mas o
+    # venue so tem 1 candidato com esse nome -> fallback pro candidato unico.
+    v = _venue(session)
+    ev = Event(name="NOITE X", status="scheduled", confidence=50, venue_id=v.id,
+               starts_at=datetime(2026, 7, 19, 1, 0, tzinfo=timezone.utc))  # SP: 18/07 22h
+    session.add(ev)
+    session.flush()
+    interp = PostInterpretation(actions=[
+        UpdateEvent(event_name="NOITE X", event_date_text="17/07",   # nao bate com nenhum dia
+                    changes={"date_text": "SAB 25/07"}, quote="adiada para 25/07", confidence=0.9),
+    ])
+    stats = execute_actions(session, _doc(), interp, reference=REF)
+    assert ev.starts_at.astimezone(_SP).day == 25
+    assert stats["update"] == 1
+    assert stats["update_candidate"] == 0
+
+
+def test_update_2_candidatos_data_errada_vira_update_candidate_e_nao_muda_nada(session):
+    # B3(iii): >=1 candidato por nome mas sem match forte -> update_candidate
+    # auditavel, NUNCA silenciosamente vira add nem muta os candidatos.
+    v = _venue(session)
+    a = Event(name="FESTA", status="scheduled", confidence=50, venue_id=v.id,
+              starts_at=datetime(2026, 7, 18, 2, 0, tzinfo=timezone.utc))
+    b = Event(name="FESTA", status="scheduled", confidence=50, venue_id=v.id,
+              starts_at=datetime(2026, 7, 25, 2, 0, tzinfo=timezone.utc))
+    session.add_all([a, b])
+    session.flush()
+    interp = PostInterpretation(actions=[
+        UpdateEvent(event_name="FESTA", event_date_text="01/08",     # nao bate com nenhuma
+                    changes={"date_text": "10/08"}, quote="adiada", confidence=0.9),
+    ])
+    stats = execute_actions(session, _doc(), interp, reference=REF)
+    assert a.starts_at == datetime(2026, 7, 18, 2, 0, tzinfo=timezone.utc)
+    assert b.starts_at == datetime(2026, 7, 25, 2, 0, tzinfo=timezone.utc)
+    assert stats["update_candidate"] == 1
+    assert stats.get("add", 0) == 0
+    assert session.query(Event).filter(Event.name == "FESTA").count() == 2
+    assert session.query(VerificationLog).filter(
+        VerificationLog.note.ilike("%update_candidate%")).count() == 1
+
+
+def test_update_muda_nome_e_data_juntos_em_match_forte(session):
+    # B3: match forte (nome antigo + data antiga = 1 so candidato no dia) ->
+    # muda nome E data juntos.
+    v = _venue(session)
+    ev = Event(name="NOITE X", status="scheduled", confidence=50, venue_id=v.id,
+               starts_at=datetime(2026, 7, 19, 1, 0, tzinfo=timezone.utc))  # SP: 18/07
+    session.add(ev)
+    session.flush()
+    interp = PostInterpretation(actions=[
+        UpdateEvent(event_name="NOITE X", event_date_text="18/07",
+                    changes={"name": "NOITE X REBOOT", "date_text": "SAB 25/07"},
+                    quote="mudou de nome e adiou", confidence=0.9),
+    ])
+    stats = execute_actions(session, _doc(), interp, reference=REF)
+    assert ev.name == "NOITE X REBOOT"
+    assert ev.starts_at.astimezone(_SP).day == 25
+    assert stats["update"] == 1
+
+
+def test_cancel_candidate_sem_venue_resolvido_nao_quebra(session):
+    # B8: handle sem venue resolvido (vid None) -> cancel_candidate ainda loga
+    # (entity_id=0, auditavel pela note) e nao explode.
+    interp = PostInterpretation(actions=[
+        CancelEvent(event_name="FESTA FANTASMA", quote="cancelamos", confidence=0.9)])
+    stats = execute_actions(session, _doc(handle="handle.sem.venue"), interp, reference=REF)
+    assert stats["cancel_candidate"] == 1
+    log = session.query(VerificationLog).filter(
+        VerificationLog.note.ilike("%cancel_candidate%")).one()
+    assert log.entity_id == 0

@@ -4,12 +4,14 @@ nao campos. Anti-alucinacao POR ACAO: quote sustenta, senao a acao (ou o
 campo) cai — mesmo espirito do adjusted_confidence do contrato antigo."""
 from __future__ import annotations
 
-from typing import Annotated, Literal, Union
+from typing import Annotated, Any, Literal, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 IgnoreReason = Literal["aula", "aniversario", "institucional", "esporte",
                        "repost", "sem_evento", "outro"]
+_IGNORE_REASONS = frozenset(
+    ("aula", "aniversario", "institucional", "esporte", "repost", "sem_evento", "outro"))
 
 
 class AddEvent(BaseModel):
@@ -45,6 +47,15 @@ class Ignore(BaseModel):
     type: Literal["ignore"] = "ignore"
     reason: IgnoreReason = "outro"
     note: str | None = None
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _coerce_unknown_reason(cls, v: Any) -> Any:
+        # B7: reason fora do Literal (modelo alucina categoria nova) nao pode
+        # derrubar a interpretacao do post inteiro com ValidationError.
+        if v not in _IGNORE_REASONS:
+            return "outro"
+        return v
 
 
 Action = Annotated[Union[AddEvent, CancelEvent, UpdateEvent, Ignore],

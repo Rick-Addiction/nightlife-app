@@ -178,15 +178,13 @@ def _real_scrape_factory(context):
 
 def _real_extract(session: Session) -> dict:
     import shutil
-    from .ingest_flyers import move_all
     from .ingestion.post_flow import process_inbox
     from .ingestion.post_interpreter import PostInterpreter
     if shutil.which("codex") is None:
         raise RuntimeError("codex CLI nao encontrado no PATH")
+    # B4: process_inbox ja move cada post pra processed/failed post a post
+    # (imediatamente apos o commit dele) — nada a mover aqui depois.
     flow = process_inbox(session, FLYERS_DIR, PostInterpreter(), reference=date.today())
-    session.commit()
-    move_all(flow.processed_paths, FLYERS_DIR / "processed")
-    move_all(flow.failed_paths, FLYERS_DIR / "failed")
     return flow.stats_by_handle
 
 
