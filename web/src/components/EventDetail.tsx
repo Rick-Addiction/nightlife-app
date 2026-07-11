@@ -25,7 +25,12 @@ export function EventDetail({ event, onClose }: {
                         borderBottom: '3px solid var(--pink)' }} />
         )}
         <div style={{ padding: '12px 14px 90px' }}>
-          <div className="hline" style={{ fontSize: 24 }}>{event.name}</div>
+          <div className="hline" style={{ fontSize: 24 }}>
+            {event.name}
+            {event.status === 'cancelled' && (
+              <span className="tag" style={{ background: 'var(--pink)', marginLeft: 8 }}>CANCELADA</span>
+            )}
+          </div>
           <div style={{ color: 'var(--green)', fontWeight: 800, fontSize: 12, marginTop: 6 }}>
             {fmtDate(event.starts_at)}
           </div>

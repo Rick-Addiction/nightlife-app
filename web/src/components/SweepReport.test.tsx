@@ -31,4 +31,11 @@ describe('SweepReport', () => {
     render(<SweepReport sweep={withAcoes} onClose={() => {}} />)
     expect(screen.getByText(/\+3 · ✕1 · ign 2/)).toBeInTheDocument()
   })
+
+  it('resumo de acoes inclui update e cancel_candidate quando presentes', () => {
+    const withAcoes = { ...sweep, report: [{ ...sweep.report[0],
+      acoes: { add: 1, update: 2, cancel: 1, cancel_candidate: 3, ignore: { esporte: 1 } } }] }
+    render(<SweepReport sweep={withAcoes} onClose={() => {}} />)
+    expect(screen.getByText(/\+1 · ~2 · ✕1 · \?3 · ign 1/)).toBeInTheDocument()
+  })
 })

@@ -38,4 +38,14 @@ describe('EventDetail', () => {
     await userEvent.click(screen.getByRole('button', { name: /fechar|✕/i }))
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('mostra a tag CANCELADA quando status e cancelled', () => {
+    render(<EventDetail event={ev({ status: 'cancelled' })} onClose={() => {}} />)
+    expect(screen.getByText('CANCELADA')).toBeInTheDocument()
+  })
+
+  it('nao mostra a tag CANCELADA quando status e scheduled', () => {
+    render(<EventDetail event={ev({ status: 'scheduled' })} onClose={() => {}} />)
+    expect(screen.queryByText('CANCELADA')).toBeNull()
+  })
 })

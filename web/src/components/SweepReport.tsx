@@ -4,7 +4,16 @@ export function acoesLabel(acoes?: SweepAcoes): string {
   if (!acoes) return '—'
   const ignoreTotal = acoes.ignore
     ? Object.values(acoes.ignore).reduce((a, b) => a + b, 0) : 0
-  return `+${acoes.add ?? 0} · ✕${acoes.cancel ?? 0} · ign ${ignoreTotal}`
+  // W1: so mostra segmentos com valor (0/ausente some) — senao a linha vira
+  // ruido de zeros pra maioria dos posts que so tem add.
+  const partes = [
+    acoes.add ? `+${acoes.add}` : null,
+    acoes.update ? `~${acoes.update}` : null,
+    acoes.cancel ? `✕${acoes.cancel}` : null,
+    acoes.cancel_candidate ? `?${acoes.cancel_candidate}` : null,
+    ignoreTotal ? `ign ${ignoreTotal}` : null,
+  ].filter((p): p is string => p !== null)
+  return partes.length ? partes.join(' · ') : '—'
 }
 
 export function SweepReport({ sweep, onClose }: { sweep: SweepOut; onClose: () => void }) {
