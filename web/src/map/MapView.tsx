@@ -5,6 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import type { EventWithGeo } from '../data/join'
 import type { VenueOut } from '../api/types'
 import { venuesToFeatureCollection } from './geojson'
+import { circleGeoJSON } from './sweep'
 import { upcomingEventsAtVenue } from '../data/venueEvents'
 import { fmtDate as fmtDateFull } from '../components/EventCard'
 
@@ -28,9 +29,12 @@ function fmtDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
+export function MapView({ events, venues, selectedId, onSelect, showVenues,
+                          onPickPoint, circle }: {
   events: EventWithGeo[]; venues: VenueOut[]; selectedId: number | null
   onSelect: (id: number) => void; showVenues: boolean
+  onPickPoint?: (lat: number, lng: number) => void
+  circle?: { lat: number; lng: number; km: number } | null
 }) {
   const [popupId, setPopupId] = useState<number | null>(null)
   const [selVenue, setSelVenue] = useState<SelVenue | null>(null)
@@ -43,6 +47,10 @@ export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
   useEffect(() => { if (!showVenues) setSelVenue(null) }, [showVenues])
 
   const onMapClick = (e: MapLayerMouseEvent) => {
+    if (onPickPoint) {
+      onPickPoint(e.lngLat.lat, e.lngLat.lng)
+      return
+    }
     const f = e.features?.[0]
     // aceita a camada base e o halo do selecionado (ambos carregam a prop id)
     if (f && (f.layer.id === 'venue-dots' || f.layer.id === 'venue-sel') && f.geometry.type === 'Point') {
@@ -77,6 +85,16 @@ export function MapView({ events, venues, selectedId, onSelect, showVenues }: {
           <Layer id="venue-sel" type="circle"
                  filter={['==', ['get', 'id'], selVenue?.id ?? -1]}
                  paint={{ 'circle-radius': 7, 'circle-color': '#00ff85', 'circle-opacity': 0.95 }} />
+        </Source>
+      )}
+
+      {circle && (
+        <Source id="sweep-circle-src" type="geojson"
+                data={circleGeoJSON(circle.lat, circle.lng, circle.km)}>
+          <Layer id="sweep-circle-fill" type="fill"
+                 paint={{ 'fill-color': '#ff2e88', 'fill-opacity': 0.12 }} />
+          <Layer id="sweep-circle-line" type="line"
+                 paint={{ 'line-color': '#ff2e88', 'line-width': 2 }} />
         </Source>
       )}
 
