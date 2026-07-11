@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import distinct, select
 from sqlalchemy.orm import Session
 
+from ..domain.matching import haversine_km
 from ..domain.nightlife_relevance import is_platform_handle, venue_relevance
 from ..models import Event, IgProfileState, Organizer, Venue
 
@@ -120,3 +121,38 @@ def record_venue_activity(session: Session, handle: str,
         return
     for v in session.scalars(select(Venue).where(Venue.instagram == handle)):
         v.ig_last_post_at = latest_post_at
+
+
+def handles_in_area(session: Session, lat: float, lng: float, km: float,
+                    *, pause_threshold: int = 3) -> list[str]:
+    """Handles de VENUES dentro do raio, SEM cap (decisao do spec D-1: area
+    varre tudo de uma vez). Nunca-varrido primeiro, depois o mais antigo.
+    Exclui platform-handles, pausados e venues 'blocked' (buffet) — mas
+    INCLUI dormants: em modo area o objetivo e descoberta (bar da Augusta
+    com festa no IG e exatamente o que buscamos). Organizers ficam fora
+    (nao tem geo)."""
+    venues = session.scalars(select(Venue).where(
+        Venue.instagram.is_not(None), Venue.lat.is_not(None), Venue.lng.is_not(None),
+    )).all()
+    with_events = set(session.scalars(
+        select(Event.venue_id).where(Event.venue_id.is_not(None))).all())
+    inside = {
+        v.instagram for v in venues
+        if haversine_km(lat, lng, v.lat, v.lng) <= km
+        and not is_platform_handle(v.instagram)
+        and venue_relevance(v.name, v.category, v.id in with_events, v.is_monitored,
+                            has_contact=True,
+                            business_status=v.business_status) != "blocked"
+    }
+    paused = set(session.scalars(
+        select(IgProfileState.handle)
+        .where(IgProfileState.consecutive_failures >= pause_threshold)).all())
+    scraped_at = {st.handle: st.last_scraped_at
+                  for st in session.scalars(select(IgProfileState))}
+    epoch = datetime.min.replace(tzinfo=timezone.utc)
+
+    def _staleness(h: str):
+        ts = scraped_at.get(h)
+        return (ts is not None, ts or epoch, h)
+
+    return sorted(inside - paused, key=_staleness)

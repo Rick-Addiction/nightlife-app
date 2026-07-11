@@ -129,3 +129,36 @@ def test_record_venue_activity_grava_no_dono_do_handle(session):
     record_venue_activity(session, "handle_de_organizer", ts)   # nao explode, nao toca venue
     record_venue_activity(session, "selva.011", None)           # None nao apaga
     assert v.ig_last_post_at == ts
+
+
+def test_handles_in_area_filtra_por_raio_e_ordena_por_antiguidade(session):
+    from datetime import datetime, timezone
+    from nightlife.persistence.ig_state import get_or_create_state, handles_in_area
+    from nightlife.models import Venue
+    dentro_novo = Venue(name="Blitz Haus", instagram="blitzhaus", lat=-23.552, lng=-46.652, confidence=50)
+    dentro_velho = Venue(name="Netao", instagram="netao", lat=-23.5517, lng=-46.6516, confidence=50)
+    fora = Venue(name="D-Edge", instagram="dedge", lat=-23.5207, lng=-46.6663, confidence=50)
+    sem_geo = Venue(name="Fantasma", instagram="fantasma", confidence=50)
+    buffet = Venue(name="Buffet Alegria Kids", instagram="alegriakids", lat=-23.552, lng=-46.653, confidence=50)
+    session.add_all([dentro_novo, dentro_velho, fora, sem_geo, buffet])
+    session.flush()
+    st = get_or_create_state(session, "netao")
+    st.last_scraped_at = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    session.flush()
+
+    out = handles_in_area(session, -23.553, -46.656, 2.0)
+
+    # nunca-varrido primeiro, depois o mais antigo; fora do raio/sem geo/buffet ficam fora
+    assert out == ["blitzhaus", "netao"]
+
+
+def test_handles_in_area_exclui_pausados(session):
+    from nightlife.persistence.ig_state import get_or_create_state, handles_in_area
+    from nightlife.models import Venue
+    v = Venue(name="Pausado Club", instagram="pausado", lat=-23.553, lng=-46.656, confidence=50)
+    session.add(v)
+    session.flush()
+    st = get_or_create_state(session, "pausado")
+    st.consecutive_failures = 3
+    session.flush()
+    assert handles_in_area(session, -23.553, -46.656, 2.0) == []

@@ -57,6 +57,9 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return 2 * R * math.asin(math.sqrt(h))
 
 
+haversine_km = _haversine_km  # uso fora do matching (fila por area do IG)
+
+
 def match_venue(candidate: VenueRef, existing: list[VenueRef], *, threshold: float = 0.82) -> VenueMatch | None:
     best: VenueMatch | None = None
     for e in existing:
