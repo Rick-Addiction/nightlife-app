@@ -37,3 +37,24 @@ class EventOut(BaseModel):
     flyer_url: str | None = None
     confidence: int
     effective_confidence: int = 0
+
+
+class AreaSweepIn(BaseModel):
+    lat: float
+    lng: float
+    km: float = 2.0
+
+
+class AreaSweepOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    label: str | None = None
+    status: str
+    phase: str
+    total_handles: int
+    done_handles: int = 0
+    report: list = []
+    diff: dict | None = None
+    error: str | None = None
+    started_at: datetime
+    finished_at: datetime | None = None

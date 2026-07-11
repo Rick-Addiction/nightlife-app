@@ -1,8 +1,12 @@
 # src/nightlife/api/main.py
 from __future__ import annotations
 
+import os
 import re
+import subprocess
+import sys
 from datetime import date, datetime, time, timedelta, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -13,9 +17,9 @@ from sqlalchemy.orm import Session
 from .. import config
 from ..domain.freshness import freshness_factor
 from ..domain.nightlife_relevance import is_buffet_name, venue_relevance
-from ..models import Event, EventSource, Venue, VenueSource
+from ..models import AreaSweep, Event, EventSource, Venue, VenueSource
 from .deps import get_session
-from .schemas import EventOut, VenueOut
+from .schemas import AreaSweepIn, AreaSweepOut, EventOut, VenueOut
 
 app = FastAPI(title="Nightlife SP — API")
 
@@ -206,4 +210,43 @@ def get_event(event_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="evento nao encontrado")
     out = _with_effective(EventOut, event, datetime.now(timezone.utc))
     out.flyer_url = _flyer_urls_for(session, [event.id]).get(event.id)
+    return out
+
+
+def _spawn_sweep(sweep_id: int) -> int:
+    """Subprocesso DESTACADO (sobrevive a API): o runner faz o trabalho."""
+    cmd = [sys.executable, "-m", "nightlife.sweep_area", "--sweep-id", str(sweep_id),
+           "--center", "0,0"]  # center ignorado quando --sweep-id existe
+    flags = 0
+    if os.name == "nt":
+        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    Path("logs").mkdir(exist_ok=True)
+    log = open(f"logs/sweep_{sweep_id}.log", "ab")
+    proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT,
+                            creationflags=flags, close_fds=True)
+    return proc.pid
+
+
+@app.post("/admin/area-sweeps", status_code=202)
+def start_area_sweep(body: AreaSweepIn, session: Session = Depends(get_session)):
+    running = session.scalars(select(AreaSweep).where(AreaSweep.status == "running")).first()
+    if running is not None:
+        raise HTTPException(status_code=409,
+                            detail=f"varredura #{running.id} ja esta rodando")
+    sweep = AreaSweep(center_lat=body.lat, center_lng=body.lng, radius_km=body.km,
+                      started_at=datetime.now(timezone.utc))
+    session.add(sweep)
+    session.flush()
+    sweep.pid = _spawn_sweep(sweep.id)
+    session.commit()
+    return {"id": sweep.id}
+
+
+@app.get("/admin/area-sweeps/current", response_model=AreaSweepOut)
+def get_current_sweep(session: Session = Depends(get_session)):
+    sweep = session.scalars(select(AreaSweep).order_by(AreaSweep.id.desc())).first()
+    if sweep is None:
+        raise HTTPException(status_code=404, detail="nenhuma varredura ainda")
+    out = AreaSweepOut.model_validate(sweep)
+    out.done_handles = len(sweep.report or [])
     return out
