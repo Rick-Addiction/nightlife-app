@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from sqlalchemy import distinct, func, select
+from sqlalchemy import distinct, func, nullslast, or_, select
 from sqlalchemy.orm import Session
 
 from .. import config
@@ -171,9 +171,14 @@ def list_events(
     if date_from is None and not include_past:
         # default: so eventos futuros — a lista nao acumula passado eternamente
         date_from = date.today()
-    q = select(Event).where(Event.confidence >= min_confidence)
+    q = select(Event).where(Event.confidence >= min_confidence,
+                            Event.status != "cancelled")
+    # sem-data (DATA A CONFIRMAR) so entra no modo "proximas" — quem pergunta
+    # por um DIA especifico (date_to) quer aquele dia, nao um "talvez"
+    include_undated = date_to is None
     if date_from is not None:
-        q = q.where(Event.starts_at >= _sp_day_start(date_from))
+        lower = Event.starts_at >= _sp_day_start(date_from)
+        q = q.where(or_(lower, Event.starts_at.is_(None)) if include_undated else lower)
     if date_to is not None:
         # limite superior EXCLUSIVO no inicio do dia seguinte (SP): inclui a
         # madrugada inteira do proprio date_to
@@ -188,7 +193,7 @@ def list_events(
         )
     now = datetime.now(timezone.utc)
     outs = [_with_effective(EventOut, e, now)
-            for e in session.scalars(q.order_by(Event.starts_at)).all()]
+            for e in session.scalars(q.order_by(nullslast(Event.starts_at.asc()))).all()]
     outs = [o for o in outs if o.effective_confidence >= min_confidence]
     if not include_all:
         # projeta (id, name) em vez de hidratar Venue inteiro por request
