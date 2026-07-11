@@ -74,6 +74,7 @@ def test_run_sweep_preenche_report_e_nao_derruba_por_handle_com_falha(session, t
         session.add(EventSource(event_id=ev.id, source_type="vision_flyer",
                                 source_url="https://www.instagram.com/p/SC1/"))
         session.flush()
+        return {"aura": {"add": 1, "ignore": {}}}
 
     run_sweep(session, sweep, inbox=tmp_path, scrape=fake_scrape, extract=fake_extract,
               delay=lambda: None)
@@ -87,6 +88,8 @@ def test_run_sweep_preenche_report_e_nao_derruba_por_handle_com_falha(session, t
     assert by_handle["aura"]["flyers"] == ["SC1"]
     assert by_handle["aura"]["festas"][0]["name"] == "Festa do Aura"
     assert by_handle["aura"]["festas"][0]["anchored"] is True
+    assert by_handle["aura"]["acoes"] == {"add": 1, "ignore": {}}
+    assert by_handle["quebrado"]["acoes"] == {}
     assert by_handle["quebrado"]["status"] == "falha"
     assert sweep.diff["novas_festas"] == 1
 

@@ -101,7 +101,7 @@ def _events_for_shortcodes(session: Session, shortcodes: list[str]) -> list[dict
 
 
 def run_sweep(session: Session, sweep: AreaSweep, *, inbox: Path,
-              scrape: Callable, extract: Callable[[], None],
+              scrape: Callable, extract: Callable[[], dict],
               delay: Callable[[], None]) -> None:
     """Nucleo testavel: scrape/extract/delay injetaveis. Blindado por handle."""
     before = snapshot_future(session)
@@ -136,8 +136,9 @@ def run_sweep(session: Session, sweep: AreaSweep, *, inbox: Path,
 
     sweep.phase = "extraindo"
     session.commit()
+    stats_by_handle: dict = {}
     try:
-        extract()
+        stats_by_handle = extract() or {}
     except Exception as exc:  # noqa: BLE001 — extracao inteira falhou: reporta, nao trava
         # B2: erro de DB dentro de extract() deixa a sessao em transacao
         # falha; sem rollback, a query/commit seguinte estoura PendingRollbackError.
@@ -148,6 +149,7 @@ def run_sweep(session: Session, sweep: AreaSweep, *, inbox: Path,
     for item in report:
         if item["flyers"]:
             item["festas"] = _events_for_shortcodes(session, item["flyers"])
+        item["acoes"] = stats_by_handle.get(item["handle"], {})
     sweep.report = report
     flag_modified(sweep, "report")
     sweep.diff = compute_diff(session, before)
@@ -174,19 +176,18 @@ def _real_scrape_factory(context):
     return _scrape
 
 
-def _real_extract(session: Session) -> None:
+def _real_extract(session: Session) -> dict:
     import shutil
     from .ingest_flyers import move_all
-    from .ingestion.codex_extractor import CodexExtractor
-    from .ingestion.flyer_source import FlyerSource
-    from .ingestion.pipeline import run_ingestion
+    from .ingestion.post_flow import process_inbox
+    from .ingestion.post_interpreter import PostInterpreter
     if shutil.which("codex") is None:
         raise RuntimeError("codex CLI nao encontrado no PATH")
-    source = FlyerSource(FLYERS_DIR, CodexExtractor(), reference=date.today())
-    run_ingestion(session, source, reference=date.today(), label="flyers")
+    flow = process_inbox(session, FLYERS_DIR, PostInterpreter(), reference=date.today())
     session.commit()
-    move_all(source.processed_paths, FLYERS_DIR / "processed")
-    move_all(source.failed_paths, FLYERS_DIR / "failed")
+    move_all(flow.processed_paths, FLYERS_DIR / "processed")
+    move_all(flow.failed_paths, FLYERS_DIR / "failed")
+    return flow.stats_by_handle
 
 
 def main(argv: list[str] | None = None) -> None:

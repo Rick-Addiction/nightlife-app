@@ -12,13 +12,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from sqlalchemy import func, select
-
 from .db import SessionLocal
-from .ingestion.codex_extractor import CodexExtractor
-from .ingestion.flyer_source import FlyerSource
-from .ingestion.pipeline import run_ingestion
-from .models import Event
+from .ingestion.post_flow import process_inbox
+from .ingestion.post_interpreter import PostInterpreter
 
 FLYERS_DIR = Path("flyers")
 
@@ -41,20 +37,14 @@ def main() -> None:
         sys.exit(1)
     FLYERS_DIR.mkdir(exist_ok=True)
 
-    source = FlyerSource(FLYERS_DIR, CodexExtractor(), reference=date.today())
     with SessionLocal() as session:
-        run = run_ingestion(session, source, reference=date.today(), label="flyers")
+        flow = process_inbox(session, FLYERS_DIR, PostInterpreter(), reference=date.today())
         session.commit()
-        events = session.scalar(select(func.count()).select_from(Event))
-        print(f"IngestionRun #{run.id}: status={run.status} "
-              f"found={run.records_found} created={run.records_created}")
-        print(f"processadas={len(source.processed_paths)} "
-              f"falhas={len(source.failed_paths)} | DB: {events} events")
-        if run.errors:
-            print("erros:\n" + run.errors[:2000])
+        print(f"posts: {len(flow.processed_paths)} processados, "
+              f"{len(flow.failed_paths)} falhas | eventos criados: {flow.created}")
 
-    move_all(source.processed_paths, FLYERS_DIR / "processed")
-    move_all(source.failed_paths, FLYERS_DIR / "failed")
+    move_all(flow.processed_paths, FLYERS_DIR / "processed")
+    move_all(flow.failed_paths, FLYERS_DIR / "failed")
 
 
 if __name__ == "__main__":
