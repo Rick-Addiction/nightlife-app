@@ -14,6 +14,10 @@ _FIELD_MASK = ("places.id,places.displayName,places.location,"
                "places.formattedAddress,places.primaryType,places.businessStatus")
 _TIMEOUT = 20.0
 
+_TEXT_ENDPOINT = "https://places.googleapis.com/v1/places:searchText"
+_TEXT_FIELD_MASK = ("places.id,places.displayName,places.formattedAddress,"
+                     "places.location,places.types,places.businessStatus")
+
 
 @dataclass(frozen=True)
 class PlaceResult:
@@ -85,6 +89,32 @@ class PlacesClient:
                 business_status=p.get("businessStatus"),
             ))
         return out
+
+    def search_text(self, query: str, *, lat: float, lng: float,
+                    radius_m: float = 2000.0) -> dict:
+        """Text Search pontual (add_place): usuario digita o nome, Google acha
+        o lugar certo mesmo com grafia/apelido — ao contrario do Nearby (que so
+        acha por tipo/geo). Devolve o dict CRU da API (places.parse_matches
+        parseia); erro vira {} (o chamador ve lista vazia, nao traceback)."""
+        body = {
+            "textQuery": query,
+            "languageCode": "pt-BR",
+            "locationBias": {"circle": {
+                "center": {"latitude": lat, "longitude": lng},
+                "radius": float(radius_m)}},
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": self._key,
+            "X-Goog-FieldMask": _TEXT_FIELD_MASK,
+        }
+        try:
+            resp = self._client.post(_TEXT_ENDPOINT, headers=headers, json=body)
+            resp.raise_for_status()
+            data = resp.json()
+        except (httpx.HTTPError, ValueError):
+            return {}
+        return data if isinstance(data, dict) else {}
 
     def place_details(self, place_id: str) -> PlaceDetails | None:
         """Nome canonico pt-BR + businessStatus + site oficial de um place_id.

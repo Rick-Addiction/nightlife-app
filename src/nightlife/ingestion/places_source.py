@@ -55,11 +55,15 @@ def _category_for(primary_type: str | None) -> str:
 class PlacesSource:
     def __init__(self, client: PlacesClient, *, seeds=SEED_POINTS,
                  types=SEARCH_TYPES, radius: float = _SEARCH_RADIUS_M,
+                 max_depth: int = _MAX_SUBDIVIDE_DEPTH,
+                 min_radius: float = _MIN_SUBDIVIDE_RADIUS_M,
                  log: Callable[[str], None] = print) -> None:
         self._client = client
         self._seeds = seeds
         self._types = types
         self._radius = radius
+        self._max_depth = max_depth
+        self._min_radius = min_radius
         self._log = log
 
     def venues(self) -> Iterable[RawVenue]:
@@ -81,7 +85,7 @@ class PlacesSource:
         if len(results) < 20:
             return
         sub_r = radius * 0.72
-        if sub_r < _MIN_SUBDIVIDE_RADIUS_M or depth >= _MAX_SUBDIVIDE_DEPTH:
+        if sub_r < self._min_radius or depth >= self._max_depth:
             self._log(f"[places] saturou 20 em {name!r}/{t} r={radius:.0f}m (freio: nao subdivide)")
             return
         self._log(f"[places] saturou 20 em {name!r}/{t} r={radius:.0f}m -> subdividindo")

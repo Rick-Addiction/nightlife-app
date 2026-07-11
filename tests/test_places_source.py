@@ -98,6 +98,32 @@ def test_subdivisao_respeita_freio_de_raio():
     assert len(client.calls) == 1
 
 
+def test_max_depth_e_min_radius_sao_configuraveis_e_subdividem_alem_do_default():
+    lots = [PlaceResult(place_id=f"P{i}", name=f"C{i}", lat=-23.5, lng=-46.6,
+                        address=None, primary_type="night_club") for i in range(20)]
+
+    class _AlwaysSaturatingClient:
+        """Toda chamada devolve 20 (satura sempre) — forca subdividir ate o teto."""
+        def __init__(self):
+            self.calls = []
+
+        def search_nearby(self, lat, lng, radius, included_type):
+            self.calls.append((lat, lng, radius, included_type))
+            return list(lots)
+
+    client = _AlwaysSaturatingClient()
+    src = PlacesSource(client, seeds=[("Augusta", -23.5545, -46.6620)],
+                       types=("night_club",), radius=400, max_depth=5,
+                       min_radius=100, log=lambda m: None)
+    list(src.venues())
+    # profundidade > 3 (o default _MAX_SUBDIVIDE_DEPTH) so acontece porque
+    # max_depth=5 foi honrado; raios ficam bem abaixo do min_radius default
+    # de producao (150m), confirmando que min_radius=100 tambem foi honrado.
+    small_radii = [r for _lat, _lng, r, _t in client.calls if r < 150]
+    assert small_radii, "esperava chamadas com raio < 150m (profundidade alem do default)"
+    assert len(client.calls) > 1 + 4 + 16     # mais que profundidade 2 (1+4+16)
+
+
 def test_closed_permanently_descartado_na_descoberta():
     morto = PlaceResult(place_id="PDEAD", name="Fechado", lat=-23.5, lng=-46.6,
                         address=None, primary_type="night_club",
