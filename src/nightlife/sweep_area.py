@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import argparse
 import random
+import re
 import time
 import unicodedata
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -28,6 +29,7 @@ from .persistence.ig_state import (
 
 FLYERS_DIR = Path("flyers")
 DEFAULT_KM = 2.0
+_IG_PERMALINK = re.compile(r"instagram\.com/p/([A-Za-z0-9_-]+)")
 
 
 def _norm(s: str) -> str:
@@ -36,14 +38,16 @@ def _norm(s: str) -> str:
 
 
 def resolve_bairro(nome: str) -> tuple[str, float, float]:
-    """Match por substring normalizada contra as sementes; 1o match vence.
-    Nenhum match -> ValueError listando os validos."""
+    """Match por substring normalizada contra as sementes; empate -> label MAIS
+    CURTO (mais especifico) vence (ex.: 'augusta' nao deve perder pra 'Baixa
+    Augusta/Consolacao' so por ordem de lista). Nenhum match -> ValueError
+    listando os validos."""
     alvo = _norm(nome)
-    for label, lat, lng in SEED_POINTS:
-        if alvo in _norm(label):
-            return label, lat, lng
-    validos = ", ".join(label for label, _, _ in SEED_POINTS)
-    raise ValueError(f"bairro {nome!r} nao encontrado. Validos: {validos}")
+    matches = [(label, lat, lng) for label, lat, lng in SEED_POINTS if alvo in _norm(label)]
+    if not matches:
+        validos = ", ".join(label for label, _, _ in SEED_POINTS)
+        raise ValueError(f"bairro {nome!r} nao encontrado. Validos: {validos}")
+    return min(matches, key=lambda t: len(t[0]))
 
 
 def snapshot_future(session: Session) -> dict:
@@ -56,6 +60,11 @@ def snapshot_future(session: Session) -> dict:
 
 
 def compute_diff(session: Session, before: dict) -> dict:
+    # WHY: o diff credita qualquer evento criado na janela do sweep (nao so os
+    # que vieram DESTE sweep) — um daily concorrente rodando ao mesmo tempo
+    # contaminaria o numero. Aceito: app pessoal, runs sao manuais/unicos.
+    # novas_festas conta so eventos FUTUROS: um flyer extraido de uma festa ja
+    # passada aparece no report do local (por handle), mas nao no diff da area.
     now = datetime.now(timezone.utc)
     events = set(session.scalars(select(Event.id).where(Event.starts_at > now)).all())
     venue_ids = set(session.scalars(
@@ -67,14 +76,24 @@ def compute_diff(session: Session, before: dict) -> dict:
 
 
 def _events_for_shortcodes(session: Session, shortcodes: list[str]) -> list[dict]:
+    """Casa flyers por shortcode EXATO do permalink. NAO usar LIKE '%/p/{sc}%':
+    '/p/SC1' tambem casaria '/p/SC12/', e '_' e wildcard do LIKE mas faz parte
+    do alfabeto de shortcode do IG — falso-positivo garantido."""
+    if not shortcodes:
+        return []
+    by_shortcode: dict[str, list[Event]] = {}
+    rows = session.execute(
+        select(Event, EventSource.source_url)
+        .join(EventSource, EventSource.event_id == Event.id)
+        .where(EventSource.source_type == "vision_flyer")
+    ).all()
+    for ev, url in rows:
+        m = _IG_PERMALINK.search(url or "")
+        if m:
+            by_shortcode.setdefault(m.group(1), []).append(ev)
     out: list[dict] = []
     for sc in shortcodes:
-        rows = session.execute(
-            select(Event).join(EventSource, EventSource.event_id == Event.id)
-            .where(EventSource.source_type == "vision_flyer",
-                   EventSource.source_url.like(f"%/p/{sc}%"))
-        ).scalars().all()
-        for ev in rows:
+        for ev in by_shortcode.get(sc, []):
             out.append({"event_id": ev.id, "name": ev.name,
                         "starts_at": ev.starts_at.isoformat() if ev.starts_at else None,
                         "anchored": ev.venue_id is not None})
@@ -120,6 +139,9 @@ def run_sweep(session: Session, sweep: AreaSweep, *, inbox: Path,
     try:
         extract()
     except Exception as exc:  # noqa: BLE001 — extracao inteira falhou: reporta, nao trava
+        # B2: erro de DB dentro de extract() deixa a sessao em transacao
+        # falha; sem rollback, a query/commit seguinte estoura PendingRollbackError.
+        session.rollback()
         sweep.error = f"extracao: {exc}"[:500]
     # casa festas criadas de volta aos itens (por shortcode do permalink)
     report = sweep.report
@@ -154,7 +176,7 @@ def _real_scrape_factory(context):
 
 def _real_extract(session: Session) -> None:
     import shutil
-    from .ingest_flyers import _move_all
+    from .ingest_flyers import move_all
     from .ingestion.codex_extractor import CodexExtractor
     from .ingestion.flyer_source import FlyerSource
     from .ingestion.pipeline import run_ingestion
@@ -163,18 +185,20 @@ def _real_extract(session: Session) -> None:
     source = FlyerSource(FLYERS_DIR, CodexExtractor(), reference=date.today())
     run_ingestion(session, source, reference=date.today(), label="flyers")
     session.commit()
-    _move_all(source.processed_paths, FLYERS_DIR / "processed")
-    _move_all(source.failed_paths, FLYERS_DIR / "failed")
+    move_all(source.processed_paths, FLYERS_DIR / "processed")
+    move_all(source.failed_paths, FLYERS_DIR / "failed")
 
 
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser()
-    g = ap.add_mutually_exclusive_group(required=True)
+    g = ap.add_mutually_exclusive_group()
     g.add_argument("--bairro")
     g.add_argument("--center", help="lat,lng")
     ap.add_argument("--km", type=float, default=DEFAULT_KM)
     ap.add_argument("--sweep-id", type=int, default=None, help="registro criado pela API")
     args = ap.parse_args(argv)
+    if args.sweep_id is None and not (args.bairro or args.center):
+        ap.error("--bairro ou --center e obrigatorio (a menos que --sweep-id seja passado)")
 
     FLYERS_DIR.mkdir(exist_ok=True)
     with SessionLocal() as session:
@@ -186,8 +210,17 @@ def main(argv: list[str] | None = None) -> None:
             running = session.scalars(
                 select(AreaSweep).where(AreaSweep.status == "running")).first()
             if running is not None:
-                raise SystemExit(f"ja existe varredura rodando (#{running.id}) — aguarde ou "
-                                 f"marque status='error' manualmente se ela morreu")
+                stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=6)
+                if running.started_at < stale_cutoff:
+                    # WHY (B3): o processo pode morrer sem tocar o banco (kill,
+                    # queda de energia); staleness e a valvula de escape sem
+                    # precisar de SQL manual pra destravar.
+                    running.status = "error"
+                    running.error = "run abandonado (stale > 6h)"
+                    session.commit()
+                else:
+                    raise SystemExit(f"ja existe varredura rodando (#{running.id}) — aguarde ou "
+                                     f"marque status='error' manualmente se ela morreu")
             if args.bairro:
                 label, lat, lng = resolve_bairro(args.bairro)
             else:
@@ -198,23 +231,31 @@ def main(argv: list[str] | None = None) -> None:
             session.add(sweep)
             session.commit()
 
-        from .ingestion.instagram_source import open_context
-        pw, context = open_context(config.IG_USER_DATA_DIR, headful=config.IG_HEADFUL)
+        pw = context = None
         try:
+            from .ingestion.instagram_source import open_context
+            pw, context = open_context(config.IG_USER_DATA_DIR, headful=config.IG_HEADFUL)
             run_sweep(session, sweep, inbox=FLYERS_DIR,
                       scrape=_real_scrape_factory(context),
                       extract=lambda: _real_extract(session),
                       delay=lambda: time.sleep(random.uniform(config.IG_DELAY_MIN,
                                                               config.IG_DELAY_MAX)))
         except Exception as exc:  # noqa: BLE001 — marca o sweep, nao deixa running orfao
+            # B2: se a excecao veio de erro de DB, a sessao pode estar numa
+            # transacao falha — sem rollback, o commit abaixo tambem estoura.
+            session.rollback()
             sweep.status = "error"
             sweep.error = str(exc)[:500]
             sweep.finished_at = datetime.now(timezone.utc)
             session.commit()
             raise
         finally:
-            context.close()
-            pw.stop()
+            # B1: open_context agora roda DENTRO do try — se o launch do
+            # Playwright falhar, context fica None e nao tentamos fechar nada
+            # (antes disso rodava fora do try e um sweep 'running' ficava orfao).
+            if context is not None:
+                context.close()
+                pw.stop()
         d = sweep.diff or {}
         print(f"sweep #{sweep.id} {sweep.status}: +{d.get('novas_festas', 0)} festas, "
               f"venues com pin novo: {d.get('venues_com_pin_novo', [])}")

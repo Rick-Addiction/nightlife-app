@@ -38,7 +38,7 @@ def _resolve_venue(session: Session, venue_name: str | None) -> Venue | None:
     return session.get(Venue, m.venue.id) if m is not None else None
 
 
-def _venue_by_handle(session: Session, handle: str | None) -> Venue | None:
+def venue_by_handle(session: Session, handle: str | None) -> Venue | None:
     """Venue dono do handle (fallback de ancoragem). So VENUES — organizer
     posta festa em casa alheia, ancorar nele erraria o lugar. Handle
     duplicado (venues ainda nao deduplicados): fica o de maior confianca."""
@@ -130,13 +130,20 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
             elif rev.venue_name:
                 # flyer da nome sem geo (e com typo): ancora no catalogo, nunca cria
                 venue = _resolve_venue(session, rev.venue_name)
+            anchored_by_handle = False
             if venue is None:
                 # nome nao resolveu (ou nem veio): flyer postado pelo IG do
                 # proprio venue ancora nele (Ciclo D-1)
-                venue = _venue_by_handle(session, rev.source_handle)
+                venue = venue_by_handle(session, rev.source_handle)
+                anchored_by_handle = venue is not None
             organizer_id = None
             if rev.organizer_name:
                 organizer_id = get_or_create_organizer(session, rev.organizer_name).id
+            raw_fields = {"raw": rev.raw_payload}
+            if anchored_by_handle:
+                # trilha de evidencia (B6): distingue "ancorou pelo nome/geo" de
+                # "ancorou so pelo handle de quem postou" pra auditoria futura.
+                raw_fields["anchored_by"] = "ig_handle"
             upsert_event(
                 session,
                 EventInput(
@@ -146,7 +153,7 @@ def run_ingestion(session: Session, source: Source, *, reference: date, label: s
                     organizer=rev.organizer_name, organizer_id=organizer_id,
                     genre=rev.genre, ticket_url=rev.ticket_url,
                     lineup_text=rev.lineup_text,
-                    raw_fields={"raw": rev.raw_payload},
+                    raw_fields=raw_fields,
                 ),
                 SourceInfo(source_type=rev.source_type, source_url=rev.source_url,
                            raw_payload=rev.raw_payload),

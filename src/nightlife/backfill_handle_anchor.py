@@ -12,8 +12,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .db import SessionLocal
-from .ingestion.pipeline import _venue_by_handle
-from .models import Event, EventSource
+from .ingestion.pipeline import venue_by_handle
+from .models import Event, EventSource, VerificationLog
 
 _IG_PERMALINK = re.compile(r"instagram\.com/p/([A-Za-z0-9_-]+)")
 PROCESSED_DIR = Path("flyers") / "processed"
@@ -38,9 +38,15 @@ def backfill(session: Session, *, processed_dir: Path = PROCESSED_DIR) -> int:
             handle = json.loads(sidecar.read_text(encoding="utf-8")).get("handle")
         except (ValueError, OSError):
             continue
-        venue = _venue_by_handle(session, handle)
+        venue = venue_by_handle(session, handle)
         if venue is not None and event.venue_id is None:
             event.venue_id = venue.id
+            # trilha de evidencia (B6): mesmo padrao de VerificationLog usado
+            # em merge_venues/recompute_*_confidence.
+            session.add(VerificationLog(
+                entity_type="event", entity_id=event.id,
+                note="anchored_by=ig_handle (backfill D-1)",
+            ))
             anchored += 1
     return anchored
 

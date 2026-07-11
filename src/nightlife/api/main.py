@@ -215,15 +215,18 @@ def get_event(event_id: int, session: Session = Depends(get_session)):
 
 def _spawn_sweep(sweep_id: int) -> int:
     """Subprocesso DESTACADO (sobrevive a API): o runner faz o trabalho."""
-    cmd = [sys.executable, "-m", "nightlife.sweep_area", "--sweep-id", str(sweep_id),
-           "--center", "0,0"]  # center ignorado quando --sweep-id existe
+    cmd = [sys.executable, "-m", "nightlife.sweep_area", "--sweep-id", str(sweep_id)]
     flags = 0
+    kwargs: dict = {}
     if os.name == "nt":
         flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        # no POSIX o detach exige nova sessao (senao o filho morre com a API)
+        kwargs["start_new_session"] = True
     Path("logs").mkdir(exist_ok=True)
-    log = open(f"logs/sweep_{sweep_id}.log", "ab")
-    proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT,
-                            creationflags=flags, close_fds=True)
+    with open(f"logs/sweep_{sweep_id}.log", "ab") as log:
+        proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT,
+                                creationflags=flags, close_fds=True, **kwargs)
     return proc.pid
 
 
@@ -231,12 +234,31 @@ def _spawn_sweep(sweep_id: int) -> int:
 def start_area_sweep(body: AreaSweepIn, session: Session = Depends(get_session)):
     running = session.scalars(select(AreaSweep).where(AreaSweep.status == "running")).first()
     if running is not None:
-        raise HTTPException(status_code=409,
-                            detail=f"varredura #{running.id} ja esta rodando")
+        stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=6)
+        if running.started_at < stale_cutoff:
+            # WHY (B3): o processo pode morrer sem tocar o banco (kill, queda
+            # de energia); staleness e a valvula de escape sem SQL manual.
+            running.status = "error"
+            running.error = "run abandonado (stale > 6h)"
+            session.commit()
+        else:
+            raise HTTPException(status_code=409,
+                                detail=f"varredura #{running.id} ja esta rodando")
+
     sweep = AreaSweep(center_lat=body.lat, center_lng=body.lng, radius_km=body.km,
                       started_at=datetime.now(timezone.utc))
     session.add(sweep)
     session.flush()
+    # B4: re-checa BEM antes do commit pra estreitar a janela de corrida.
+    # App single-user: sem constraint no DB (nao vale a pena aqui) — best-effort.
+    still_running = session.scalars(
+        select(AreaSweep).where(AreaSweep.status == "running", AreaSweep.id != sweep.id)
+    ).first()
+    if still_running is not None:
+        session.rollback()
+        raise HTTPException(status_code=409,
+                            detail=f"varredura #{still_running.id} ja esta rodando")
+    session.commit()  # commit ANTES do spawn: o filho faz session.get imediatamente
     sweep.pid = _spawn_sweep(sweep.id)
     session.commit()
     return {"id": sweep.id}

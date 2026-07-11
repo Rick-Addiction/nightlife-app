@@ -23,7 +23,7 @@ from .models import Event
 FLYERS_DIR = Path("flyers")
 
 
-def _move_all(paths: list[Path], dest: Path) -> None:
+def move_all(paths: list[Path], dest: Path) -> None:
     dest.mkdir(parents=True, exist_ok=True)
     for p in paths:
         for f in (p, p.with_suffix(".json")):  # imagem + sidecar (se houver)
@@ -53,8 +53,8 @@ def main() -> None:
         if run.errors:
             print("erros:\n" + run.errors[:2000])
 
-    _move_all(source.processed_paths, FLYERS_DIR / "processed")
-    _move_all(source.failed_paths, FLYERS_DIR / "failed")
+    move_all(source.processed_paths, FLYERS_DIR / "processed")
+    move_all(source.failed_paths, FLYERS_DIR / "failed")
 
 
 if __name__ == "__main__":

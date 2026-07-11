@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timezone
 
 from nightlife.backfill_handle_anchor import backfill
-from nightlife.models import Event, EventSource, Venue
+from nightlife.models import Event, EventSource, Venue, VerificationLog
 
 
 def test_backfill_ancora_evento_flutuante_pelo_sidecar(session, tmp_path):
@@ -23,6 +23,9 @@ def test_backfill_ancora_evento_flutuante_pelo_sidecar(session, tmp_path):
 
     assert n == 1
     assert ev.venue_id == v.id
+    # B6: trilha de evidencia via VerificationLog, mesmo padrao usado em merge_venues
+    log = session.query(VerificationLog).filter_by(entity_type="event", entity_id=ev.id).one()
+    assert "anchored_by=ig_handle" in log.note
 
 
 def test_backfill_ignora_sem_sidecar_e_ja_ancorado(session, tmp_path):

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from nightlife.models import AreaSweep, Event, Venue
+from nightlife.models import AreaSweep, Event, EventSource, Venue
 from nightlife.sweep_area import compute_diff, resolve_bairro, run_sweep
 
 
@@ -13,6 +13,15 @@ def test_resolve_bairro_normaliza_e_casa_substring():
     assert lat == pytest.approx(-23.55, abs=0.02)
     with pytest.raises(ValueError):
         resolve_bairro("atlantida")   # inexistente lista os validos
+
+
+def test_resolve_bairro_prefere_match_mais_especifico_no_empate():
+    # B10: "baixa augusta" so casa com a semente "Baixa Augusta/Consolacao";
+    # "augusta" casa com as duas, mas deve vencer a mais curta (mais especifica).
+    label, _, _ = resolve_bairro("baixa augusta")
+    assert label == "Baixa Augusta/Consolacao"
+    label2, _, _ = resolve_bairro("augusta")
+    assert "Augusta" in label2
 
 
 def test_compute_diff_conta_festas_novas_e_venues_com_primeiro_pin(session):
@@ -80,3 +89,26 @@ def test_run_sweep_preenche_report_e_nao_derruba_por_handle_com_falha(session, t
     assert by_handle["aura"]["festas"][0]["anchored"] is True
     assert by_handle["quebrado"]["status"] == "falha"
     assert sweep.diff["novas_festas"] == 1
+
+
+def test_events_for_shortcodes_nao_casa_por_prefixo_like(session):
+    # B5: LIKE '%/p/{sc}%' faria '/p/SC1' casar com '/p/SC12/' tambem — o
+    # shortcode precisa bater EXATO (regex + dict), nao por substring.
+    from nightlife.sweep_area import _events_for_shortcodes
+    ev_curto = Event(name="Curto", status="scheduled", confidence=40,
+                     starts_at=datetime(2099, 1, 1, tzinfo=timezone.utc))
+    ev_longo = Event(name="Longo", status="scheduled", confidence=40,
+                     starts_at=datetime(2099, 1, 2, tzinfo=timezone.utc))
+    session.add_all([ev_curto, ev_longo])
+    session.flush()
+    session.add_all([
+        EventSource(event_id=ev_curto.id, source_type="vision_flyer",
+                   source_url="https://www.instagram.com/p/SC1/"),
+        EventSource(event_id=ev_longo.id, source_type="vision_flyer",
+                   source_url="https://www.instagram.com/p/SC12/"),
+    ])
+    session.flush()
+
+    out = _events_for_shortcodes(session, ["SC1"])
+
+    assert [o["event_id"] for o in out] == [ev_curto.id]

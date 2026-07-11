@@ -33,6 +33,8 @@ def test_handle_de_venue_ancora_quando_nome_nao_resolve(session):
                   reference=date(2026, 7, 10), label="flyers")
     ev = session.query(Event).filter_by(name="Festa X").one()
     assert ev.venue_id == v.id
+    # B6: trilha de evidencia — ancoragem via handle fica marcada em raw_fields
+    assert ev.raw_fields.get("anchored_by") == "ig_handle"
 
 
 def test_nome_que_resolve_tem_prioridade_sobre_handle(session):
@@ -44,6 +46,8 @@ def test_nome_que_resolve_tem_prioridade_sobre_handle(session):
                   reference=date(2026, 7, 10), label="flyers")
     ev = session.query(Event).filter_by(name="Festa X").one()
     assert ev.venue_id == certo.id
+    # ancorou pelo NOME, nao pelo handle: sem marcador anchored_by
+    assert "anchored_by" not in ev.raw_fields
 
 
 def test_handle_de_organizer_nao_ancora(session):

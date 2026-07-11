@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class VenueOut(BaseModel):
@@ -42,7 +42,7 @@ class EventOut(BaseModel):
 class AreaSweepIn(BaseModel):
     lat: float
     lng: float
-    km: float = 2.0
+    km: float = Field(2.0, gt=0, le=10)
 
 
 class AreaSweepOut(BaseModel):
