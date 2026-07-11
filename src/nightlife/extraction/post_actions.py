@@ -4,7 +4,7 @@ nao campos. Anti-alucinacao POR ACAO: quote sustenta, senao a acao (ou o
 campo) cai — mesmo espirito do adjusted_confidence do contrato antigo."""
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal, Union, get_args
 
 from pydantic import BaseModel, Field, field_validator
 
