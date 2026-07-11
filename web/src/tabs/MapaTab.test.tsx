@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { EventWithGeo } from '../data/join'
 import type { VenueOut } from '../api/types'
@@ -7,6 +7,10 @@ import type { VenueOut } from '../api/types'
 const mapProps = vi.fn()
 vi.mock('../map/MapView', () => ({
   MapView: (props: Record<string, unknown>) => { mapProps(props); return <div data-testid="map-stub" /> },
+}))
+vi.mock('../api/sweep', () => ({
+  startSweep: vi.fn(async () => ({ id: 1 })),
+  fetchCurrentSweep: vi.fn(async () => { throw new Error('404') }),
 }))
 
 import { MapaTab, visibleVenues } from './MapaTab'
@@ -43,7 +47,7 @@ describe('MapaTab', () => {
     events: [evt(1, 10, new Date(2026, 6, 10, 23, 0).toISOString())],
     venues: [venue(10)], filters: initialFilters, dispatch: () => {},
     selectedId: null, onSelect: () => {}, onOpenSheet: () => {}, activeCount: 0,
-    withDrawer: true,
+    withDrawer: true, onDataStale: () => {},
   }
   it('desligar FESTAS zera os events do MapView', async () => {
     render(<MapaTab {...base} />)
@@ -62,5 +66,13 @@ describe('MapaTab', () => {
   it('com withDrawer renderiza a gaveta com a contagem', () => {
     render(<MapaTab {...base} />)
     expect(screen.getByText(/1 FESTA NA ÁREA/)).toBeInTheDocument()
+  })
+  it('botao VARRER AREA entra em modo alvo e o clique confirma o circulo', async () => {
+    render(<MapaTab {...base} />)
+    await userEvent.click(screen.getByRole('button', { name: '⌖ VARRER ÁREA' }))
+    const last = mapProps.mock.calls.at(-1)![0] as { onPickPoint?: (a: number, b: number) => void }
+    expect(last.onPickPoint).toBeDefined()
+    act(() => last.onPickPoint!(-23.553, -46.656))
+    expect(await screen.findByRole('button', { name: /VARRER \d+ PERFIS/ })).toBeInTheDocument()
   })
 })

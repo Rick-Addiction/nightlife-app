@@ -63,7 +63,7 @@ export default function App() {
              selectedId={selectedId}
              onSelect={(id) => { const e = events.find((x) => x.id === id); if (e) openEvent(e) }}
              onOpenSheet={() => setSheetOpen(true)} activeCount={activeCount}
-             withDrawer={!isDesktop} />
+             withDrawer={!isDesktop} onDataStale={() => setReloadKey((k) => k + 1)} />
   )
   const festas = <FestasTab events={filtered} filters={filters} dispatch={dispatch} onOpen={openEvent}
                             activeCount={activeCount} onOpenSheet={() => setSheetOpen(true)} />
