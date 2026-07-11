@@ -66,6 +66,35 @@ def test_process_inbox_interpreta_executa_e_separa_paths(session, tmp_path):
     assert run.records_created == 1
     # contexto passado ao interprete inclui o venue dono do handle
     assert fake.calls[0][1].venue_name == "Selva Club"
+    # legenda do sidecar repassada ao Document (equivalente ao antigo
+    # FlyerSource::test_le_sidecar_e_passa_caption_e_permalink)
+    assert fake.calls[0][0].caption == "legenda"
+
+
+def test_process_inbox_permalink_vira_source_url_e_sem_permalink_usa_hash(session, tmp_path):
+    # porte de test_flyer_caption.py (permalink vira source_url / sem
+    # permalink mantem id sintetico "flyer:<hash>") pro fluxo novo.
+    from nightlife.models import EventSource
+
+    _post(tmp_path, "COMPERM", seed=4)
+    _img(tmp_path / "SEMPERM.jpg", seed=5)
+    (tmp_path / "SEMPERM.json").write_text(json.dumps({"handle": "selva.011"}),
+                                           encoding="utf-8")
+    fake = FakeInterpreter({
+        "COMPERM": PostInterpretation(actions=[AddEvent(
+            name="COM PERMALINK", quotes={"name": "COM PERMALINK"}, confidence={"name": 0.9})]),
+        "SEMPERM": PostInterpretation(actions=[AddEvent(
+            name="SEM PERMALINK", quotes={"name": "SEM PERMALINK"}, confidence={"name": 0.9})]),
+    })
+    process_inbox(session, tmp_path, fake, reference=REF)
+
+    ev_com = session.query(Event).filter_by(name="COM PERMALINK").one()
+    src_com = session.query(EventSource).filter_by(event_id=ev_com.id).one()
+    assert src_com.source_url == "https://www.instagram.com/p/COMPERM/"
+
+    ev_sem = session.query(Event).filter_by(name="SEM PERMALINK").one()
+    src_sem = session.query(EventSource).filter_by(event_id=ev_sem.id).one()
+    assert src_sem.source_url.startswith("flyer:")
 
 
 def test_process_inbox_dhash_dedupe_nao_reinterpreta(session, tmp_path):

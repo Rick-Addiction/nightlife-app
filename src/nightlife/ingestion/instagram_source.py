@@ -1,6 +1,6 @@
 # src/nightlife/ingestion/instagram_source.py
 """Scraper de Instagram (spec §6). O PARSE do JSON do IG e puro e testavel;
-a navegacao Playwright fica numa casca injetavel (Task 9), como o CodexExtractor."""
+a navegacao Playwright fica numa casca injetavel (Task 9), como o PostInterpreter."""
 from __future__ import annotations
 
 import json

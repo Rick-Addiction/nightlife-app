@@ -1,7 +1,8 @@
 # src/nightlife/ingestion/post_flow.py
 """Orquestra o inbox de posts (spec E-1 §3.4): dHash dedupe -> Document ->
 interprete -> saneamento -> executor. processed/failed sao movidos pelo
-CALLER (padrao do FlyerSource). IngestionRun label='posts'."""
+CALLER (mesmo padrao do caminho antigo, aposentado no Task 6). IngestionRun
+label='posts'."""
 from __future__ import annotations
 
 import json

@@ -1,8 +1,8 @@
 # src/nightlife/ingestion/codex_cli.py
 """Plomberia compartilhada do codex CLI (spec E-1): invocacao headless com
-imagem anexada + extracao do JSON da saida. Usado pelo CodexExtractor (flyer
-1-evento) e pelo PostInterpreter (E-1). Nao reescreva as licoes de
-Windows/seguranca abaixo — foram calibradas no smoke real."""
+imagem anexada + extracao do JSON da saida. Usado pelo PostInterpreter (o
+caminho antigo 1-evento, CodexExtractor, saiu no Task 6). Nao reescreva as
+licoes de Windows/seguranca abaixo — foram calibradas no smoke real."""
 from __future__ import annotations
 
 import json
