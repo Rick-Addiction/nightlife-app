@@ -56,6 +56,22 @@ def upsert_venue(
             best.score, distance_km=geo_distance_km(cand_ref, best.venue)
         )
 
+    if decision == "auto_merge" and source.source_type == "google_places" and source.source_url:
+        # VETO do caso Supra (smoke E-1): se o melhor match JA tem um place_id
+        # DIFERENTE, o Google esta dizendo que sao DOIS lugares — clubes
+        # vizinhos na mesma rua (Supra a 24m do Casarao, ambos "...Augusta")
+        # passam do limiar por proximidade+nome. Mesma trava que a
+        # reconciliacao do Ciclo A ja usava; portada pro ingest.
+        outro_pid = session.scalars(
+            select(VenueSource.source_url).where(
+                VenueSource.venue_id == best.venue.id,
+                VenueSource.source_type == "google_places",
+                VenueSource.source_url != source.source_url,
+            )
+        ).first()
+        if outro_pid is not None:
+            decision = "review"
+
     if decision == "auto_merge":
         return _fill_and_record(session, session.get(Venue, best.venue.id), candidate, source, reference)
 

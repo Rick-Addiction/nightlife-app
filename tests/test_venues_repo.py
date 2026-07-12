@@ -90,3 +90,32 @@ def test_geoless_nomes_iguais_fontes_diferentes_viram_review(session):
     assert len(session.scalars(select(Venue)).all()) == 2          # nao fundiu
     cands = session.scalars(select(DedupeCandidate)).all()
     assert len(cands) == 1 and cands[0].decision == "review"
+
+
+def test_place_id_distinto_veta_auto_merge(session):
+    # CASO SUPRA (smoke E-1): Supra Club Augusta a 24m do Casarao Augusta,
+    # score 0.89 -> auto_merge fundia dois CLUBES DIFERENTES. Veto da
+    # reconciliacao do Ciclo A (place_ids distintos = Google diz que sao dois
+    # lugares) portado pro ingest: vira review, nunca funde.
+    casarao = upsert_venue(
+        session, VenueInput(name="Casarão Augusta", lat=-23.5525607, lng=-46.653397,
+                            address="R. Augusta, 791 - Consolação, São Paulo"),
+        _src("google_places", "ChIJ_CASARAO"), reference=REF)
+    supra = upsert_venue(
+        session, VenueInput(name="Supra Club Augusta", lat=-23.5525337, lng=-46.6531663,
+                            address="R. Augusta, 765 - Consolação, São Paulo"),
+        _src("google_places", "ChIJ_SUPRA"), reference=REF)
+    assert supra.id != casarao.id            # NAO fundiu
+    from nightlife.models import DedupeCandidate
+    dc = session.query(DedupeCandidate).filter_by(kind="venue").all()
+    assert any({d.a_id, d.b_id} == {supra.id, casarao.id} for d in dc)  # foi pra review
+
+
+def test_veto_nao_atrapalha_auto_merge_sem_conflito_de_place_id(session):
+    # mesmo lugar visto por OSM e depois por Places: sem place_id no alvo,
+    # auto_merge continua valendo (comportamento atual preservado)
+    a = upsert_venue(session, VenueInput(name="Lab Club", lat=-23.561, lng=-46.656),
+                     _src("osm", "https://osm.org/lab"), reference=REF)
+    b = upsert_venue(session, VenueInput(name="lab club", lat=-23.5611, lng=-46.6561),
+                     _src("google_places", "ChIJ_LAB"), reference=REF)
+    assert b.id == a.id
