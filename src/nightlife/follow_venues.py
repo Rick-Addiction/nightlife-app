@@ -4,6 +4,7 @@ Uso: .venv/Scripts/python -m nightlife.follow_venues"""
 from __future__ import annotations
 
 import random
+import re
 import time
 
 from . import config
@@ -18,7 +19,11 @@ class CheckpointDetected(Exception):
 
 
 _FOLLOW_LABELS = ("Seguir", "Follow")
-_ALREADY = ("Seguindo", "Following", "Solicitado", "Requested")
+# "ja seguindo" por regex-CONTENDO: o nome acessivel do botao "Seguindo" difere
+# do texto visivel (o IG mete estrutura/texto oculto dentro), entao exact=True
+# nao casa. Confirmado no smoke (perfil ja-seguido do @blitzhaus). "Seguir" NAO
+# e substring de "Seguindo", entao a ordem (already-first) nao da falso-positivo.
+_ALREADY_RE = re.compile(r"Seguindo|Following|Solicitado|Requested", re.IGNORECASE)
 
 
 def _playwright_follow_factory(context):
@@ -30,9 +35,8 @@ def _playwright_follow_factory(context):
             page.wait_for_timeout(1500)
             if "challenge" in page.url or "/accounts/suspended" in page.url:
                 raise CheckpointDetected(page.url)
-            for label in _ALREADY:
-                if page.get_by_role("button", name=label, exact=True).count():
-                    return  # ja seguindo/solicitado — sucesso sem clicar
+            if page.get_by_role("button", name=_ALREADY_RE).count():
+                return  # ja seguindo/solicitado — sucesso sem clicar
             for label in _FOLLOW_LABELS:
                 btn = page.get_by_role("button", name=label, exact=True)
                 if btn.count():
