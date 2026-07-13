@@ -39,6 +39,10 @@ def _playwright_follow_factory(context):
                     btn.first.click(timeout=8000)
                     page.wait_for_timeout(1500)
                     return
+            # nenhum botao casou: NAO marca followed_at (seria estado corrompido —
+            # fila drenada sem seguir ninguem se o seletor exact estiver errado no
+            # smoke). Levanta => run_follows trata como falha isolada, pula, retenta.
+            raise RuntimeError(f"nenhum botao Seguir/Seguindo em @{handle} (seletor?)")
         finally:
             page.close()
     return _follow
