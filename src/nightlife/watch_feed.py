@@ -4,7 +4,7 @@ handle (cursor), baixa so esses posts e roda o intérprete do E-1. So age na
 janela noturna. Uso (agendado 45min): .venv/Scripts/python -m nightlife.watch_feed"""
 from __future__ import annotations
 
-from datetime import date, datetime, time as dtime
+from datetime import datetime, time as dtime
 from pathlib import Path
 from typing import Callable
 from zoneinfo import ZoneInfo
@@ -23,7 +23,8 @@ FLYERS_DIR = Path("flyers")
 
 
 def in_window(now: dtime, *, start: int, end: int) -> bool:
-    """Janela que cruza a meia-noite (start=10, end=2 => 10h ate 02h)."""
+    """Janela que cruza a meia-noite (start=10, end=2 => 10h ate 02h).
+    end e EXCLUSIVO: end=2 => janela vai ate 01:59; 02:00 ja NAO dispara."""
     if start <= end:
         return start <= now.hour < end
     return now.hour >= start or now.hour < end
@@ -42,7 +43,10 @@ def detect_and_fetch(session, items: list[FeedItem], *,
     for it in novos:
         if it.handle not in known:
             continue
-        fetch(it.handle, it.shortcode)
+        try:
+            fetch(it.handle, it.shortcode)
+        except Exception:  # noqa: BLE001 — falha isolada: retenta no proximo poll
+            continue
         top_by_handle.setdefault(it.handle, it.shortcode)  # 1o = mais novo
         n += 1
     for handle, top in top_by_handle.items():

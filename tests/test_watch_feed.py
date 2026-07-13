@@ -37,3 +37,20 @@ def test_detect_and_fetch_sem_novos_e_noop(session):
     n = detect_and_fetch(session, items, fetch=lambda h, s: None,
                          cursor_by_handle={"selva.011": "SC1"})
     assert n == 0
+
+
+def test_detect_and_fetch_fetch_que_falha_nao_derruba_o_lote_nem_avanca_cursor(session):
+    a = Venue(name="A", instagram="aura", lat=-23.55, lng=-46.65, confidence=50)
+    b = Venue(name="B", instagram="blitz", lat=-23.55, lng=-46.65, confidence=50)
+    session.add_all([a, b]); session.flush()
+    items = [FeedItem("aura", "AU2", 200), FeedItem("blitz", "BL2", 200)]
+
+    def fetch(handle, sc):
+        if handle == "aura":
+            raise RuntimeError("timeout")   # aura falha, blitz ok
+
+    n = detect_and_fetch(session, items, fetch=fetch, cursor_by_handle={})
+    assert n == 1                                            # so blitz contou
+    # blitz avancou o cursor; aura NAO (sera retentado)
+    assert session.query(IgProfileState).filter_by(handle="blitz").one().last_shortcode == "BL2"
+    assert session.query(IgProfileState).filter_by(handle="aura").count() == 0

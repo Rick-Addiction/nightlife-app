@@ -17,6 +17,10 @@ class CheckpointDetected(Exception):
     pass
 
 
+_FOLLOW_LABELS = ("Seguir", "Follow")
+_ALREADY = ("Seguindo", "Following", "Solicitado", "Requested")
+
+
 def _playwright_follow_factory(context):
     def _follow(handle: str) -> None:
         page = context.new_page()
@@ -26,12 +30,15 @@ def _playwright_follow_factory(context):
             page.wait_for_timeout(1500)
             if "challenge" in page.url or "/accounts/suspended" in page.url:
                 raise CheckpointDetected(page.url)
-            # botao "Seguir" — o texto varia (Seguir/Follow); casa por role+nome.
-            # SELETOR A CONFIRMAR no smoke (o IG muda o DOM).
-            btn = page.get_by_role("button", name=lambda n: n and n.strip() in
-                                   ("Seguir", "Follow"))
-            btn.first.click(timeout=8000)
-            page.wait_for_timeout(1500)
+            for label in _ALREADY:
+                if page.get_by_role("button", name=label, exact=True).count():
+                    return  # ja seguindo/solicitado — sucesso sem clicar
+            for label in _FOLLOW_LABELS:
+                btn = page.get_by_role("button", name=label, exact=True)
+                if btn.count():
+                    btn.first.click(timeout=8000)
+                    page.wait_for_timeout(1500)
+                    return
         finally:
             page.close()
     return _follow

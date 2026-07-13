@@ -43,9 +43,11 @@ def parse_feed_items(graphql: dict) -> list[FeedItem]:
 
 def new_since_cursor(items: list[FeedItem],
                      cursor_by_handle: dict[str, str]) -> list[FeedItem]:
-    """Itens mais novos que o ultimo shortcode visto de cada handle. O feed vem
-    do mais novo pro mais antigo, entao pra cada handle paramos ao bater no
-    cursor. Handle sem cursor (nunca visto) -> todos os seus itens sao novos."""
+    """Itens mais novos que o ultimo shortcode visto de cada handle. Ordenamos
+    por taken_at (mais novo primeiro) antes de aplicar a logica de corte no
+    cursor, pra nao depender da ordem bruta do feed. Handle sem cursor (nunca
+    visto) -> todos os seus itens sao novos."""
+    items = sorted(items, key=lambda i: i.taken_at or 0, reverse=True)
     seen_cursor: set[str] = set()
     out: list[FeedItem] = []
     for it in items:
@@ -74,12 +76,14 @@ def playwright_fetch_feed(context) -> list[FeedItem]:
             captured.append(data)
 
     page.on("response", _on_response)
-    page.goto("https://www.instagram.com/?variant=following",
-              wait_until="networkidle", timeout=45000)
-    page.wait_for_timeout(3000)
-    page.mouse.wheel(0, 3000)
-    page.wait_for_timeout(2500)
-    page.close()
+    try:
+        page.goto("https://www.instagram.com/?variant=following",
+                  wait_until="networkidle", timeout=45000)
+        page.wait_for_timeout(3000)
+        page.mouse.wheel(0, 3000)
+        page.wait_for_timeout(2500)
+    finally:
+        page.close()
     items: list[FeedItem] = []
     for data in captured:
         got = parse_feed_items(data)

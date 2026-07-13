@@ -50,3 +50,12 @@ def test_new_since_cursor_handle_sem_novidade():
     from nightlife.ingestion.feed_source import FeedItem, new_since_cursor
     items = [FeedItem("selva.011", "SC1", 100)]
     assert new_since_cursor(items, cursor_by_handle={"selva.011": "SC1"}) == []
+
+
+def test_new_since_cursor_robusto_a_ordem_embaralhada():
+    from nightlife.ingestion.feed_source import FeedItem, new_since_cursor
+    # ordem NAO-newest-first: cursor SC1 no meio, SC2(novo, taken=200) depois
+    items = [FeedItem("selva.011", "SC1", 100), FeedItem("selva.011", "SC2", 200),
+             FeedItem("selva.011", "SC0", 50)]
+    novos = new_since_cursor(items, cursor_by_handle={"selva.011": "SC1"})
+    assert [i.shortcode for i in novos] == ["SC2"]   # so o mais novo, apesar da ordem
