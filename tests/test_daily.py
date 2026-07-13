@@ -78,8 +78,8 @@ def test_steps_inclui_ra():
     from nightlife.daily import STEPS
     nomes = [nome for nome, argv in STEPS]
     assert "ingest_ra" in nomes
-    # ra vem antes do ig (venues do RA ancoram antes de scrapear)
-    assert nomes.index("ingest_ra") < nomes.index("ingest_ig")
+    # ra vem antes do geocoding (venues do RA ancoram antes de geocodificar)
+    assert nomes.index("ingest_ra") < nomes.index("geocode_venues")
 
 
 def test_steps_inclui_sympla():
@@ -89,5 +89,14 @@ def test_steps_inclui_sympla():
     from nightlife.daily import STEPS
     nomes = [nome for nome, argv in STEPS]
     assert "ingest_sympla" in nomes
-    # sympla tambem ancora venues/organizers antes do scrape de IG
-    assert nomes.index("ingest_sympla") < nomes.index("ingest_ig")
+    # sympla tambem ancora venues/organizers antes do geocoding
+    assert nomes.index("ingest_sympla") < nomes.index("geocode_venues")
+
+
+def test_ingest_ig_saiu_do_daily_diario():
+    # E-3: a varredura cega vira reconciliacao SEMANAL, fora do daily das 05h
+    from nightlife.daily import STEPS
+    nomes = [nome for nome, argv in STEPS]
+    assert "ingest_ig" not in nomes
+    assert "ingest_flyers" in nomes          # extracao do inbox continua diaria
+    assert "discover_handles" in nomes

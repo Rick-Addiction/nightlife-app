@@ -25,6 +25,11 @@ IG_DELAY_MIN = float(os.environ.get("IG_DELAY_MIN", "4"))
 IG_DELAY_MAX = float(os.environ.get("IG_DELAY_MAX", "11"))
 IG_FAILURE_PAUSE_THRESHOLD = int(os.environ.get("IG_FAILURE_PAUSE_THRESHOLD", "3"))
 
+# Feed "Seguindo" (Ciclo E-3): follow ramp-up + janela noturna do watch_feed
+IG_MAX_FOLLOWS_PER_RUN = int(os.environ.get("IG_MAX_FOLLOWS_PER_RUN", "18"))
+FEED_WINDOW_START_HOUR = int(os.environ.get("FEED_WINDOW_START_HOUR", "10"))
+FEED_WINDOW_END_HOUR = int(os.environ.get("FEED_WINDOW_END_HOUR", "2"))
+
 # Google Geocoding API (endereco -> coordenada). Chave criada pelo usuario no
 # Google Cloud (Geocoding API + billing). Sem ela, o runner de geocoding aborta.
 GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY") or None
