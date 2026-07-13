@@ -55,3 +55,35 @@ def new_since_cursor(items: list[FeedItem],
             continue
         out.append(it)
     return out
+
+
+def playwright_fetch_feed(context) -> list[FeedItem]:
+    """Abre o feed 'Seguindo' e captura o JSON; parse_feed_items (puro) extrai.
+    BRITTLE (o IG muda): a URL/rolagem sao calibradas no probe/smoke."""
+    page = context.new_page()
+    captured: list[dict] = []
+
+    def _on_response(resp):
+        if "application/json" not in resp.headers.get("content-type", ""):
+            return
+        try:
+            data = resp.json()
+        except Exception:  # noqa: BLE001
+            return
+        if isinstance(data, dict):
+            captured.append(data)
+
+    page.on("response", _on_response)
+    page.goto("https://www.instagram.com/?variant=following",
+              wait_until="networkidle", timeout=45000)
+    page.wait_for_timeout(3000)
+    page.mouse.wheel(0, 3000)
+    page.wait_for_timeout(2500)
+    page.close()
+    items: list[FeedItem] = []
+    for data in captured:
+        got = parse_feed_items(data)
+        if got:
+            items = got
+            break
+    return items
