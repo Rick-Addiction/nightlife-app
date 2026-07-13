@@ -162,3 +162,36 @@ def test_handles_in_area_exclui_pausados(session):
     st.consecutive_failures = 3
     session.flush()
     assert handles_in_area(session, -23.553, -46.656, 2.0) == []
+
+
+def test_follow_queue_nao_seguidos_quentes_primeiro_e_cap(session):
+    from datetime import datetime, timezone
+    from nightlife.persistence.ig_state import follow_queue, get_or_create_state
+    from nightlife.models import Event, Venue
+    quente = Venue(name="Blitz Haus", instagram="blitzhaus", lat=-23.55, lng=-46.65,
+                   confidence=50)
+    frio = Venue(name="Bar X", instagram="barx", lat=-23.55, lng=-46.65, confidence=50)
+    ja_seg = Venue(name="Seguido", instagram="jaseg", lat=-23.55, lng=-46.65, confidence=50)
+    session.add_all([quente, frio, ja_seg])
+    session.flush()
+    # quente tem evento futuro
+    session.add(Event(name="Festa", status="scheduled", confidence=50, venue_id=quente.id,
+                      starts_at=datetime(2099, 1, 1, tzinfo=timezone.utc)))
+    st = get_or_create_state(session, "jaseg")
+    st.followed_at = datetime.now(timezone.utc)   # ja seguido -> fora da fila
+    session.flush()
+
+    fila = follow_queue(session, cap=10)
+
+    assert "jaseg" not in fila
+    assert fila[0] == "blitzhaus"          # quente primeiro
+    assert set(fila) == {"blitzhaus", "barx"}
+
+
+def test_follow_queue_respeita_cap(session):
+    from nightlife.persistence.ig_state import follow_queue
+    from nightlife.models import Venue
+    for i in range(5):
+        session.add(Venue(name=f"V{i}", instagram=f"v{i}", lat=-23.55, lng=-46.65, confidence=50))
+    session.flush()
+    assert len(follow_queue(session, cap=3)) == 3

@@ -156,3 +156,24 @@ def handles_in_area(session: Session, lat: float, lng: float, km: float,
         return (ts is not None, ts or epoch, h)
 
     return sorted(inside - paused, key=_staleness)
+
+
+def follow_queue(session: Session, *, cap: int) -> list[str]:
+    """Handles de venues AINDA NAO seguidos pela burner, quentes primeiro (mesmo
+    criterio de _hot_handles), depois por id (ordem de descoberta). Reusa
+    IgProfileState.followed_at como marca. So venues com instagram, nao-platform."""
+    followed = set(session.scalars(
+        select(IgProfileState.handle).where(IgProfileState.followed_at.is_not(None))).all())
+    hot = _hot_handles(session)
+    rows = session.scalars(
+        select(Venue).where(Venue.instagram.is_not(None)).order_by(Venue.id)).all()
+    seen: set[str] = set()
+    cand: list[tuple[int, str]] = []       # (0=quente,1=frio, handle) preservando ordem
+    for v in rows:
+        h = v.instagram
+        if h in followed or h in seen or is_platform_handle(h):
+            continue
+        seen.add(h)
+        cand.append((0 if h in hot else 1, h))
+    cand.sort(key=lambda t: t[0])          # estavel: quentes antes, resto na ordem de id
+    return [h for _, h in cand][:cap]

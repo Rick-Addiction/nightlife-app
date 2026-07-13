@@ -135,6 +135,7 @@ class IgProfileState(Base):
     last_shortcode: Mapped[str | None] = mapped_column(String(50), default=None)
     last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
+    followed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
 class GeocodeCache(Base):
