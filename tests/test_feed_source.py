@@ -28,3 +28,25 @@ def test_parse_feed_items_pula_nao_post_e_media_incompleto():
         {"node": {"media": {"user": {"username": "selva.011"}}}},    # sem shortcode
     ]}}}
     assert parse_feed_items(bad) == []
+
+
+def test_new_since_cursor_primeiro_poll_devolve_tudo():
+    from nightlife.ingestion.feed_source import FeedItem, new_since_cursor
+    items = [FeedItem("selva.011", "SC2", 200), FeedItem("blitzhaus", "BH1", 100)]
+    novos = new_since_cursor(items, cursor_by_handle={})
+    assert {i.shortcode for i in novos} == {"SC2", "BH1"}
+
+
+def test_new_since_cursor_para_no_shortcode_ja_visto():
+    from nightlife.ingestion.feed_source import FeedItem, new_since_cursor
+    # feed vem do mais novo pro mais antigo; SC1 e o cursor de selva
+    items = [FeedItem("selva.011", "SC2", 200), FeedItem("selva.011", "SC1", 100),
+             FeedItem("selva.011", "SC0", 50)]
+    novos = new_since_cursor(items, cursor_by_handle={"selva.011": "SC1"})
+    assert [i.shortcode for i in novos] == ["SC2"]   # so o mais novo que SC1
+
+
+def test_new_since_cursor_handle_sem_novidade():
+    from nightlife.ingestion.feed_source import FeedItem, new_since_cursor
+    items = [FeedItem("selva.011", "SC1", 100)]
+    assert new_since_cursor(items, cursor_by_handle={"selva.011": "SC1"}) == []

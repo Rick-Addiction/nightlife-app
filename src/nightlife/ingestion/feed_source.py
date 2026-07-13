@@ -39,3 +39,19 @@ def parse_feed_items(graphql: dict) -> list[FeedItem]:
         out.append(FeedItem(handle=handle, shortcode=shortcode,
                             taken_at=_taken_at_of(media)))
     return out
+
+
+def new_since_cursor(items: list[FeedItem],
+                     cursor_by_handle: dict[str, str]) -> list[FeedItem]:
+    """Itens mais novos que o ultimo shortcode visto de cada handle. O feed vem
+    do mais novo pro mais antigo, entao pra cada handle paramos ao bater no
+    cursor. Handle sem cursor (nunca visto) -> todos os seus itens sao novos."""
+    seen_cursor: set[str] = set()
+    out: list[FeedItem] = []
+    for it in items:
+        cur = cursor_by_handle.get(it.handle)
+        if cur is not None and (it.shortcode == cur or it.handle in seen_cursor):
+            seen_cursor.add(it.handle)     # deste handle pra baixo e tudo antigo
+            continue
+        out.append(it)
+    return out
