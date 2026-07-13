@@ -133,7 +133,7 @@ git commit -m "feat: probe do feed Seguindo (gate E-3) + fixture do shape real d
 - Create: `src/nightlife/ingestion/feed_source.py`
 - Test: `tests/test_feed_source.py`
 
-**PRÉ:** Task 1 concluída; `tests/fixtures/feed_sample.json` existe e você conhece a connection-key e o path do @autor. Os literais abaixo assumem o shape MODERNO provável (`node.user.username`, connection `xdt_api__v1__feed__timeline`); **ajuste os seletores ao que o probe achou** — a fixture é a fonte da verdade.
+**PRÉ:** Task 1 concluída — shape CONFIRMADO pelo probe real (2026-07-13): connection `data.xdt_api__v1__feed__timeline__connection.edges`; cada `edge.node.media` é o post (ads/sugestões têm `node.media = null`); dentro do `media`: `user.username` (@autor), `code` (shortcode), `taken_at` (unix). Fixture real em `tests/fixtures/feed_sample.json` (3 posts + 1 não-post).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -161,11 +161,12 @@ def test_parse_feed_items_ignora_json_sem_feed():
     assert parse_feed_items({"data": {"outra_coisa": 1}}) == []
 
 
-def test_parse_feed_items_pula_no_sem_autor_ou_shortcode():
-    # anuncios/sugestoes no feed nao tem owner util — devem ser pulados
-    bad = {"data": {"xdt_api__v1__feed__timeline": {"edges": [
-        {"node": {"code": "SC1"}},                      # sem autor
-        {"node": {"user": {"username": "selva.011"}}},  # sem shortcode
+def test_parse_feed_items_pula_nao_post_e_media_incompleto():
+    # ads/sugestoes tem node.media = None; media sem code/user tambem cai
+    bad = {"data": {"xdt_api__v1__feed__timeline__connection": {"edges": [
+        {"node": {"media": None, "ad": {"is_ad": True}}},           # nao-post
+        {"node": {"media": {"code": "SC1"}}},                        # sem autor
+        {"node": {"media": {"user": {"username": "selva.011"}}}},    # sem shortcode
     ]}}}
     assert parse_feed_items(bad) == []
 ```
@@ -185,10 +186,8 @@ from dataclasses import dataclass
 
 from .instagram_source import _shortcode_of, _taken_at_of
 
-# chave(s) da connection do feed — CONFIRMADAS no probe (Task 1). Se o shape
-# real diferir, ajuste esta lista (e o test) pra bater com a fixture.
-_FEED_KEYS = ("xdt_api__v1__feed__timeline",
-              "xdt_api__v1__feed__timeline_connection")
+# connection do feed CONFIRMADA no probe real (2026-07-13)
+_FEED_KEY = "xdt_api__v1__feed__timeline__connection"
 
 
 @dataclass
@@ -199,32 +198,24 @@ class FeedItem:
 
 
 def _feed_edges(graphql: dict) -> list:
-    data = graphql.get("data") or {}
-    for k in _FEED_KEYS:
-        conn = data.get(k)
-        if isinstance(conn, dict) and conn.get("edges"):
-            return conn["edges"]
-    return []
-
-
-def _handle_of(node: dict) -> str | None:
-    for key in ("user", "owner"):
-        u = node.get(key)
-        if isinstance(u, dict) and u.get("username"):
-            return u["username"]
-    return None
+    conn = (graphql.get("data") or {}).get(_FEED_KEY)
+    return conn.get("edges") or [] if isinstance(conn, dict) else []
 
 
 def parse_feed_items(graphql: dict) -> list[FeedItem]:
+    """O post fica em edge.node.media (ads/sugestoes tem media=None). @autor em
+    media.user.username; shortcode/taken_at pelos helpers de no do instagram_source."""
     out: list[FeedItem] = []
     for edge in _feed_edges(graphql):
-        node = edge.get("node") or {}
-        handle = _handle_of(node)
-        shortcode = _shortcode_of(node)
-        if not handle or not shortcode:      # anuncio/sugestao sem autor ou code
+        media = (edge.get("node") or {}).get("media")
+        if not isinstance(media, dict) or not media:   # ad/sugestao/story
+            continue
+        handle = (media.get("user") or {}).get("username")
+        shortcode = _shortcode_of(media)
+        if not handle or not shortcode:
             continue
         out.append(FeedItem(handle=handle, shortcode=shortcode,
-                            taken_at=_taken_at_of(node)))
+                            taken_at=_taken_at_of(media)))
     return out
 ```
 
