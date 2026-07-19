@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from datetime import date
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .db import SessionLocal

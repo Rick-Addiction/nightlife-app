@@ -113,6 +113,10 @@ def execute_actions(session: Session, doc: "Document",
                    "update": 0, "update_candidate": 0, "ignore": {}}
     venue = (session.get(Venue, doc.venue_id) if doc.venue_id is not None
              else venue_by_handle(session, doc.handle))
+    if doc.venue_id is not None and venue is None:
+        session.add(VerificationLog(
+            entity_type="venue", entity_id=doc.venue_id,
+            note=f"web_page com venue_id inexistente {doc.venue_id} — evento nao ancorado"))
     vid = venue.id if venue is not None else None
 
     for a in interp.actions:

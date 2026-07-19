@@ -16,7 +16,7 @@ from ..extraction.post_actions import AddEvent, PostInterpretation, sanitize_act
 from ..models import Event, Venue
 from ..persistence.action_executor import execute_actions
 from .post_interpreter import Document, VenueContext
-from .web_source import agenda_links, looks_empty, visible_text
+from .web_source import agenda_links, visible_text
 
 _SP_TODAY_CAP = 20
 _TEXT_CAP = 12000        # trunca texto longo pro prompt (custo/alucinacao)
@@ -25,7 +25,9 @@ _TEXT_CAP = 12000        # trunca texto longo pro prompt (custo/alucinacao)
 def jsonld_to_actions(html: str, *, source_url: str | None) -> list[AddEvent]:
     out: list[AddEvent] = []
     for ev in parse_jsonld_events(html, source_url=source_url):
-        if not ev.name or not ev.starts_at_raw:
+        # evento com nome mas sem data vira DATA A CONFIRMAR (mesma politica do
+        # caminho codex); so descarta sem nome
+        if not ev.name:
             continue
         out.append(AddEvent(
             name=ev.name, starts_at_iso=ev.starts_at_raw, ticket_url=ev.ticket_url,
@@ -51,15 +53,21 @@ def crawl_venue(session: Session, venue: Venue, *, fetcher: Callable[[str], str]
     if not venue.website:
         return stats
     home = fetcher(venue.website)
-    digest = hashlib.sha256((home or "").encode("utf-8", "replace")).hexdigest()
-    if venue.web_last_hash == digest:
-        stats["skipped"] = True
-        return stats
-
     pages = [(venue.website, home)]
     for link in agenda_links(home, base_url=venue.website):
         pages.append((link, fetcher(link)))
 
+    # hash da CONCATENACAO de todas as paginas (home + agenda subpaginas) —
+    # se so a subpagina mudar (home estatica), ainda precisa re-extrair
+    digest = hashlib.sha256(
+        "\n".join(html or "" for _, html in pages).encode("utf-8", "replace")).hexdigest()
+    if venue.web_last_hash == digest:
+        stats["skipped"] = True
+        return stats
+
+    # known_events e tirado uma vez por crawl (nao por pagina): repost-ignore
+    # entre subpaginas da agenda e best-effort, mas o dedupe do upsert_event
+    # ja evita linha duplicada de qualquer forma.
     ctx = _context_for(session, venue, reference)
     for url, html in pages:
         if not html:

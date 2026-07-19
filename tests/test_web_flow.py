@@ -32,6 +32,15 @@ class FakeInterp:
             confidence={"name": 0.9, "date_text": 0.9})])
 
 
+def test_jsonld_to_actions_mantem_evento_sem_data():
+    html = ('<html><head><script type="application/ld+json">'
+            '{"@type":"Event","name":"Festa Sem Data"}</script></head></html>')
+    acts = jsonld_to_actions(html, source_url="https://x.com")
+    assert len(acts) == 1
+    assert acts[0].name == "Festa Sem Data"
+    assert acts[0].starts_at_iso is None
+
+
 def test_crawl_venue_jsonld_nao_chama_codex(session):
     v = Venue(name="Selva Club", website="https://selva.club", lat=-23.55, lng=-46.65, confidence=50)
     session.add(v); session.flush()
@@ -63,3 +72,26 @@ def test_crawl_venue_cache_hit_pula(session):
     stats2 = crawl_venue(session, v, fetcher=lambda url: html, interpreter=fake, reference=REF)
     assert stats2.get("skipped") is True
     assert fake.calls == n1                    # nao re-chamou
+
+
+def test_crawl_venue_cache_hit_considera_subpaginas(session):
+    # home estatica, mas a subpagina /agenda MUDA -> nao pode pular
+    v = Venue(name="V", website="https://v.com", lat=-23.55, lng=-46.65, confidence=50)
+    session.add(v); session.flush()
+    home = '<html><body><a href="/agenda">Agenda</a> casa noturna</body></html>'
+    ag1 = "<html><body>" + ("SEX 25/07 Festa A " * 20) + "</body></html>"
+    ag2 = "<html><body>" + ("SAB 26/07 Festa B " * 20) + "</body></html>"
+    calls = {"n": 0}
+    class FI:
+        def interpret(self, doc, ctx):
+            calls["n"] += 1
+            return PostInterpretation(actions=[AddEvent(name=f"Festa{calls['n']}",
+                date_text="SEX 25/07", quotes={"name": "x", "date_text": "x"},
+                confidence={"name": 0.9, "date_text": 0.9})])
+    def fetch_v1(url): return home if url == "https://v.com" else ag1
+    def fetch_v2(url): return home if url == "https://v.com" else ag2
+    crawl_venue(session, v, fetcher=fetch_v1, interpreter=FI(), reference=REF)
+    n1 = calls["n"]
+    stats = crawl_venue(session, v, fetcher=fetch_v2, interpreter=FI(), reference=REF)
+    assert stats.get("skipped") is not True    # subpagina mudou -> re-extraiu
+    assert calls["n"] > n1

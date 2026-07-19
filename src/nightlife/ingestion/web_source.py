@@ -99,6 +99,8 @@ def fetch_page(url: str, *, timeout: float = 15.0) -> str:
     headers = {"User-Agent": "RadarSP/1.0 (agenda de eventos; contato via github)"}
     html = ""
     try:
+        # follow_redirects=True em URL controlada pelo venue = superficie SSRF;
+        # aceito p/ ferramenta pessoal, mitigado por timeout + UA identificavel
         r = httpx.get(url, headers=headers, timeout=timeout, follow_redirects=True)
         html = r.text
     except Exception:  # noqa: BLE001 — rede/tls: tenta o Playwright
@@ -116,7 +118,10 @@ def fetch_page(url: str, *, timeout: float = 15.0) -> str:
                 page.wait_for_timeout(1500)
                 html = page.content()
             finally:
-                page.close(); b.close()
+                try:
+                    page.close()
+                finally:
+                    b.close()
     except Exception:  # noqa: BLE001 — sem render: devolve o httpx (mesmo que vazio)
         pass
     return html
