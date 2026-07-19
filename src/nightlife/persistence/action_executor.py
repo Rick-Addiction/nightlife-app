@@ -82,6 +82,13 @@ def _do_add(session: Session, doc: "Document", a: AddEvent, *,
         starts = parse_iso(a.starts_at_iso)
     if starts is None and a.date_text:
         starts = parse_ptbr_datetime(a.date_text, reference=reference).dt
+    if starts is None and venue is not None and any(
+            e.starts_at is None for e in _name_candidates(session, venue.id, a.name)):
+        # review E-2a: evento SEM data nao deduplica no dedup normal (cap de
+        # recorrencia < limiar), entao re-add do mesmo evento sem-data (ex.: JSON-LD
+        # perene do site, toda semana) empilharia duplicatas. Idempotente por
+        # (venue, nome) quando ja existe um sem-data igual.
+        return
     raw_fields: dict = {"raw": a.model_dump_json()}
     if venue is not None:
         raw_fields["anchored_by"] = "site_venue" if doc.kind == "web_page" else "ig_handle"

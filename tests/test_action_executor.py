@@ -249,3 +249,26 @@ def test_web_event_coincidente_com_ig_funde(session):
     execute_actions(session, _web_doc(v.id), PostInterpretation(actions=[a]), reference=_REF_E2A)
     # mesmo venue + nome + dia-SP => upsert funde, nao cria 2o
     assert session.query(Event).filter_by(name="Mamba Negra").count() == 1
+
+
+def test_add_sem_data_e_idempotente_por_venue_e_nome(session):
+    # regressao do review E-2a: evento sem data nao deduplica no dedup normal
+    # (cap de recorrencia < limiar), entao 2 adds do mesmo evento sem-data no
+    # mesmo venue criariam 2 linhas — 1 por semana de crawl. Guard: idempotente.
+    from datetime import date as _d
+    from nightlife.extraction.post_actions import AddEvent, PostInterpretation
+    from nightlife.ingestion.post_interpreter import Document
+    from nightlife.models import Event, Venue
+    from nightlife.persistence.action_executor import execute_actions
+    v = Venue(name="Selva", lat=-23.55, lng=-46.65, confidence=50)
+    session.add(v); session.flush()
+    def _doc():
+        return Document(kind="web_page", image_path=None, caption=None, handle=None,
+                        permalink="https://selva.club/agenda", text=None, venue_id=v.id)
+    def _act():
+        return PostInterpretation(actions=[AddEvent(
+            name="Roda de Samba", quotes={"name": "Roda de Samba"}, confidence={"name": 1.0})])
+    REF2 = _d(2026, 7, 18)
+    execute_actions(session, _doc(), _act(), reference=REF2)
+    execute_actions(session, _doc(), _act(), reference=REF2)   # 2a semana, mesmo evento
+    assert session.query(Event).filter_by(name="Roda de Samba").count() == 1
