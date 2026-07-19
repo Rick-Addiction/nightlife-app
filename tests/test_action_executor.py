@@ -205,3 +205,47 @@ def test_cancel_candidate_sem_venue_resolvido_nao_quebra(session):
     log = session.query(VerificationLog).filter(
         VerificationLog.note.ilike("%cancel_candidate%")).one()
     assert log.entity_id == 0
+
+
+_REF_E2A = date(2026, 7, 18)
+
+
+def _web_doc(venue_id):
+    return Document(kind="web_page", image_path=None, caption=None, handle=None,
+                    permalink="https://selva.club/agenda", text="...", venue_id=venue_id)
+
+
+def test_add_ancora_por_venue_id_quando_web_page(session):
+    v = Venue(name="Selva Club", lat=-23.55, lng=-46.65, confidence=50)  # SEM instagram
+    session.add(v); session.flush()
+    a = AddEvent(name="Mamba Negra", starts_at_iso="2026-07-25T23:00:00-03:00",
+                 quotes={"name": "Mamba Negra"}, confidence={"name": 1.0})
+    execute_actions(session, _web_doc(v.id), PostInterpretation(actions=[a]), reference=_REF_E2A)
+    ev = session.query(Event).filter_by(name="Mamba Negra").one()
+    assert ev.venue_id == v.id
+    # dia-SP (nao UTC bruto): 23h -03:00 do dia 25 e ainda dia 25 em SP; a
+    # timestamptz volta do Postgres em UTC (mesma licao do C-1/_sp_day acima).
+    assert ev.starts_at is not None and ev.starts_at.astimezone(_SP).day == 25   # veio do ISO
+
+
+def test_add_starts_at_iso_tem_precedencia_sobre_date_text(session):
+    v = Venue(name="X", lat=-23.55, lng=-46.65, confidence=50)
+    session.add(v); session.flush()
+    a = AddEvent(name="E", date_text="SEX 01/01", starts_at_iso="2026-07-25T22:00:00-03:00",
+                 quotes={"name": "E"}, confidence={"name": 1.0})
+    execute_actions(session, _web_doc(v.id), PostInterpretation(actions=[a]), reference=_REF_E2A)
+    ev = session.query(Event).filter_by(name="E").one()
+    assert ev.starts_at.astimezone(_SP).day == 25          # ISO venceu o date_text
+
+
+def test_web_event_coincidente_com_ig_funde(session):
+    v = Venue(name="Selva", instagram="selva.011", lat=-23.55, lng=-46.65, confidence=50)
+    session.add(v); session.flush()
+    ja = Event(name="Mamba Negra", status="scheduled", confidence=50, venue_id=v.id,
+               starts_at=datetime(2026, 7, 26, 2, 0, tzinfo=timezone.utc))  # 25/07 23h SP
+    session.add(ja); session.flush()
+    a = AddEvent(name="Mamba Negra", starts_at_iso="2026-07-25T23:00:00-03:00",
+                 quotes={"name": "Mamba Negra"}, confidence={"name": 1.0})
+    execute_actions(session, _web_doc(v.id), PostInterpretation(actions=[a]), reference=_REF_E2A)
+    # mesmo venue + nome + dia-SP => upsert funde, nao cria 2o
+    assert session.query(Event).filter_by(name="Mamba Negra").count() == 1

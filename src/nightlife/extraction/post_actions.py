@@ -17,6 +17,7 @@ class AddEvent(BaseModel):
     type: Literal["add_event"] = "add_event"
     name: str
     date_text: str | None = None       # CRU PT-BR; quem converte e o dates_ptbr
+    starts_at_iso: str | None = None   # ISO ja parseado (JSON-LD); bypassa dates_ptbr
     time_text: str | None = None
     lineup: list[str] = Field(default_factory=list)
     genre: str | None = None

@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..domain.dates_ptbr import parse_ptbr_datetime
+from ..extraction.base import parse_iso
 from ..extraction.freetext import _clean_url, _is_generic_link
 from ..extraction.post_actions import (
     AddEvent, CancelEvent, Ignore, PostInterpretation, UpdateEvent,
@@ -77,11 +78,13 @@ def _match_event(session: Session, venue_id: int | None, name: str,
 def _do_add(session: Session, doc: "Document", a: AddEvent, *,
            venue: Venue | None, reference: date) -> None:
     starts = None
-    if a.date_text:
+    if a.starts_at_iso:
+        starts = parse_iso(a.starts_at_iso)
+    if starts is None and a.date_text:
         starts = parse_ptbr_datetime(a.date_text, reference=reference).dt
     raw_fields: dict = {"raw": a.model_dump_json()}
     if venue is not None:
-        raw_fields["anchored_by"] = "ig_handle"
+        raw_fields["anchored_by"] = "site_venue" if doc.kind == "web_page" else "ig_handle"
     ticket_url = a.ticket_url
     if ticket_url:
         # B2: porta o gate do caminho antigo — link generico (linktr.ee,
@@ -89,6 +92,7 @@ def _do_add(session: Session, doc: "Document", a: AddEvent, *,
         # que trata ticket_url igual como prova de mesmo evento.
         cleaned = _clean_url(ticket_url)
         ticket_url = None if _is_generic_link(cleaned) else cleaned
+    src_type = "site" if doc.kind == "web_page" else "vision_flyer"
     upsert_event(
         session,
         EventInput(name=a.name, starts_at=starts,
@@ -97,7 +101,7 @@ def _do_add(session: Session, doc: "Document", a: AddEvent, *,
                    genre=a.genre, ticket_url=ticket_url,
                    lineup_text=", ".join(a.lineup) or None,
                    raw_fields=raw_fields),
-        SourceInfo(source_type="vision_flyer", source_url=doc.permalink,
+        SourceInfo(source_type=src_type, source_url=doc.permalink,
                    raw_payload=a.model_dump_json()),
         reference=reference,
     )
@@ -107,7 +111,8 @@ def execute_actions(session: Session, doc: "Document",
                     interp: PostInterpretation, *, reference: date) -> dict:
     stats: dict = {"add": 0, "cancel": 0, "cancel_candidate": 0,
                    "update": 0, "update_candidate": 0, "ignore": {}}
-    venue = venue_by_handle(session, doc.handle)
+    venue = (session.get(Venue, doc.venue_id) if doc.venue_id is not None
+             else venue_by_handle(session, doc.handle))
     vid = venue.id if venue is not None else None
 
     for a in interp.actions:

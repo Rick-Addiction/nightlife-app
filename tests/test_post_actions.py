@@ -61,3 +61,9 @@ def test_ignore_reason_desconhecido_vira_outro():
     interp = PostInterpretation.model_validate({"actions": [
         {"type": "ignore", "reason": "meme"}]})
     assert interp.actions[0].reason == "outro"
+
+
+def test_addevent_aceita_starts_at_iso():
+    a = AddEvent(name="E", starts_at_iso="2026-07-25T23:00:00-03:00",
+                 quotes={"name": "E"}, confidence={"name": 1.0})
+    assert a.starts_at_iso.startswith("2026-07-25")

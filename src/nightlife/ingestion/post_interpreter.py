@@ -21,11 +21,13 @@ _log = logging.getLogger(__name__)
 
 @dataclass
 class Document:
-    kind: Literal["ig_post"]           # "web_page" entra no E-2
-    image_path: Path
+    kind: Literal["ig_post", "web_page"]
+    image_path: Path | None
     caption: str | None
     handle: str | None
     permalink: str | None
+    text: str | None = None          # texto da pagina (web_page)
+    venue_id: int | None = None      # ancora direto (web_page: venue conhecido)
 
 
 @dataclass
