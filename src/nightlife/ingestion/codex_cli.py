@@ -55,6 +55,18 @@ def run_codex(image_path: Path, prompt: str) -> str:
     return result.stdout or ""
 
 
+def run_codex_text(prompt: str) -> str:
+    """Codex exec text-only (Ciclo E-2a): sem imagem, so o prompt via stdin.
+    Mesmas licoes de Windows (shell no win32, stdin) do run_codex acima."""
+    codex_bin = shutil.which("codex") or "codex"
+    result = subprocess.run(
+        [codex_bin, "exec", "--skip-git-repo-check", "-"],
+        input=prompt, capture_output=True, text=True, encoding="utf-8",
+        errors="replace", timeout=300, shell=(sys.platform == "win32"),
+    )
+    return result.stdout or ""
+
+
 def extract_json(text: str) -> dict:
     # heuristica do 1o "{" ao ultimo "}": o CLI cerca o JSON de logs/preambulo.
     # Se o preambulo tiver seu proprio par de chaves, rfind pega o span errado

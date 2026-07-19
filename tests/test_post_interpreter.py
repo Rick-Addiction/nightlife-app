@@ -44,3 +44,34 @@ def test_interpret_retry_e_none_em_lixo_persistente():
     assert it.interpret(DOC, CTX) is None
     assert len(calls) == 2
     assert "invalida" in calls[1]     # re-prompt de correcao, padrao do CodexExtractor
+
+
+CTX_WEB = VenueContext(venue_name="Selva Club", handle=None, today_iso="2026-07-18",
+                       known_events=[("Mamba Negra", "2026-07-25")])
+
+
+def _web_doc(text="AGENDA\nSEX 25/07 Mamba Negra"):
+    return Document(kind="web_page", image_path=None, caption=None, handle=None,
+                    permalink="https://selva.club/agenda", text=text, venue_id=7)
+
+
+def test_build_prompt_web_usa_texto_da_pagina_e_contexto():
+    p = build_prompt(_web_doc(), CTX_WEB)
+    for esperado in ("Selva Club", "2026-07-18", "Mamba Negra (2026-07-25)",
+                     "SEX 25/07 Mamba Negra", "add_event"):
+        assert esperado in p
+    assert "IMAGEM" not in p          # prompt web NAO fala de imagem
+
+
+def test_interpret_web_usa_runner_de_texto():
+    payload = {"actions": [{"type": "add_event", "name": "A", "date_text": "SEX 25/07",
+               "quotes": {"name": "A", "date_text": "SEX 25/07"},
+               "confidence": {"name": 0.9, "date_text": 0.9}}]}
+    calls = []
+    def fake_text_runner(prompt):
+        calls.append(prompt)
+        return f"blabla {json.dumps(payload)} fim"
+    it = PostInterpreter(text_runner=fake_text_runner)
+    out = it.interpret(_web_doc(), CTX_WEB)
+    assert [a.name for a in out.actions] == ["A"]
+    assert len(calls) == 1 and "IMAGEM" not in calls[0]
