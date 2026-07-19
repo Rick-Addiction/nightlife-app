@@ -14,4 +14,5 @@ $t = New-ScheduledTaskTrigger -Once -At (Get-Date) `
 New-NlTask "Nightlife-WatchFeed" "nightlife.watch_feed" $t
 New-NlTask "Nightlife-Follow" "nightlife.follow_venues" (New-ScheduledTaskTrigger -Daily -At 14:00)
 New-NlTask "Nightlife-Reconcile" "nightlife.ingest_ig" (New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 06:00)
+New-NlTask "Nightlife-Sites" "nightlife.crawl_sites" (New-ScheduledTaskTrigger -Weekly -DaysOfWeek Tuesday -At 07:00)
 Write-Host "pronto. (o daily das 05h continua pelo register_daily_task.ps1)"
