@@ -9,11 +9,7 @@ probe_ig_search — navegam 1x pra home antes de chamar context.request.get.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 from urllib.parse import quote
-
-if TYPE_CHECKING:  # evita import circular em runtime: handle_match importa SearchResult daqui
-    from nightlife.ingestion.handle_match import ProfileSignals
 
 # X-IG-App-ID e o app id publico da web do IG (confirmado no probe real);
 # sem ele o topsearch/web_profile_info devolvem 401/403 mesmo com cookies ok.
@@ -32,6 +28,16 @@ class SearchResult:
     full_name: str
     is_verified: bool
     is_private: bool
+
+
+@dataclass(frozen=True)
+class ProfileSignals:
+    handle: str
+    bio_link: str | None       # external link in the profile bio
+    category: str | None       # IG business category, e.g. "Nightclub", "Bar"
+    bio_text: str | None       # the bio text
+    is_verified: bool
+    follower_count: int | None
 
 
 def parse_search_results(payload: dict) -> list[SearchResult]:
@@ -79,8 +85,6 @@ def parse_profile_signals(handle: str, payload: dict) -> "ProfileSignals":
     """JSON do web_profile_info/ -> ProfileSignals. PURO, nunca estoura:
     payload ausente/mal-formado -> campos None/False (categoria e nome de
     negocio costumam vir None mesmo em perfis validos — e esperado)."""
-    from nightlife.ingestion.handle_match import ProfileSignals
-
     user = {}
     if isinstance(payload, dict):
         data = payload.get("data")
@@ -126,7 +130,7 @@ def playwright_search(context, query: str) -> list[SearchResult]:
         page.close()
 
 
-def fetch_profile_signals(context, handle: str) -> "ProfileSignals | None":
+def fetch_profile_signals(context, handle: str) -> ProfileSignals | None:
     """Busca o perfil de `handle` (web_profile_info/) e extrai os sinais.
 
     Mesmo padrao de navegar 1x pra home antes do request; falha de rede/shape

@@ -19,8 +19,8 @@ from sqlalchemy.orm import Session
 
 from . import config
 from .db import SessionLocal
-from .ingestion.handle_match import ProfileSignals, decide as _default_decide, shortlist
-from .ingestion.ig_search import SearchResult, fetch_profile_signals, playwright_search
+from .ingestion.handle_match import decide as _default_decide, shortlist
+from .ingestion.ig_search import ProfileSignals, SearchResult, fetch_profile_signals, playwright_search
 from .ingestion.instagram_source import open_context
 from .models import Event, VerificationLog, Venue
 
@@ -61,7 +61,8 @@ def discover(session: Session, venues: list[Venue], *,
     venue: uma falha nao aborta o resto do lote."""
     stats = {"attach": 0, "review": 0, "reject": 0, "no_results": 0,
              "no_profile": 0, "error": 0}
-    for venue in venues:
+    last_idx = len(venues) - 1
+    for idx, venue in enumerate(venues):
         try:
             results = search(venue.name)
             sl = shortlist(venue.name, results)
@@ -80,7 +81,8 @@ def discover(session: Session, venues: list[Venue], *,
                         note=f"discover_ig: sem perfil pra @{best.username} (venue {venue.name})"))
                 else:
                     decision = decide(venue_name=venue.name, venue_website=venue.website,
-                                      venue_neighborhood=None, best=best, signals=signals)
+                                      venue_neighborhood=None, best=best, signals=signals,
+                                      venue_address=venue.address)
                     if decision.action == "attach":
                         venue.instagram = decision.handle
                         session.add(VerificationLog(
@@ -102,7 +104,8 @@ def discover(session: Session, venues: list[Venue], *,
                 entity_type="venue", entity_id=venue.id,
                 note=f"discover_ig erro: {exc}"))
             session.commit()
-        delay()
+        if idx != last_idx:
+            delay()
     return stats
 
 
