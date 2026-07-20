@@ -1,0 +1,28 @@
+{
+  "data": {
+    "user": {
+      "username": "oficina_club",
+      "full_name": "Oficina Club",
+      "is_verified": false,
+      "is_business_account": false,
+      "category_name": null,
+      "category": null,
+      "business_category_name": null,
+      "biography": "Onde o Baixo Augusta acontece\nOpen Bar em todos os eventos\nR. Peixoto Gomide, 73\nIngressos",
+      "external_url": "https://cheers.com.br/pagina/oficina-club~14785",
+      "bio_links": [
+        {
+          "title": "Ingressos & Informacoes",
+          "lynx_url": "https://l.instagram.com/?u=REDACTED",
+          "url": "https://cheers.com.br/pagina/oficina-club~14785",
+          "link_type": "external"
+        }
+      ],
+      "edge_followed_by": {
+        "count": 8677
+      },
+      "follower_count": null
+    }
+  },
+  "status": "ok"
+}
