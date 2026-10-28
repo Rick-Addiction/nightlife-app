@@ -60,3 +60,40 @@ def test_sympla_source_other_methods_empty():
     src = SymplaSource()
     assert src.venues() == []
     assert src.event_pages() == []
+
+
+def test_search_params_filter_city_server_side_and_optional_query():
+    # sondagem 2026-10-28: `cityIn` nao filtra mais; `city` (string) filtra.
+    base = SymplaSource().search_params(3)
+    assert base["city"] == "São Paulo"
+    assert base["cityIn"] == ["São Paulo"]
+    assert base["page"] == 3 and base["limit"] == 100
+    assert "q" not in base
+    assert SymplaSource(query="halloween").search_params(1)["q"] == "halloween"
+
+
+class _FakeResp:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self._payload
+
+
+def test_events_posts_city_and_query_and_stops_on_short_page(monkeypatch):
+    import nightlife.ingestion.sympla_source as mod
+
+    calls: list[dict] = []
+
+    def fake_post(url, *, json, headers, timeout):
+        calls.append(json["params"])
+        return _FakeResp(SEARCH_JSON)  # 5 registros < page_size -> para na 1a pagina
+
+    monkeypatch.setattr(mod.httpx, "post", fake_post)
+    revs = SymplaSource(query="halloween", reference=REF).events()
+    assert [r.name for r in revs] == ["Mamba Negra"]
+    assert len(calls) == 1
+    assert calls[0]["city"] == "São Paulo" and calls[0]["q"] == "halloween"

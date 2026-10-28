@@ -83,13 +83,26 @@ class SymplaSource:
     """Fonte real #2: eventos de festas/shows de SP via API de busca da Sympla."""
 
     def __init__(self, *, endpoint: str = SYMPLA_SEARCH_ENDPOINT,
-                 page_size: int = 100, max_pages: int = 20,
-                 reference: date | None = None, timeout: float = 30.0) -> None:
+                 page_size: int = 100, max_pages: int = 60,
+                 reference: date | None = None, timeout: float = 30.0,
+                 query: str | None = None) -> None:
         self._endpoint = endpoint
         self._page_size = page_size
         self._max_pages = max_pages
         self._reference = reference
         self._timeout = timeout
+        self._query = query
+
+    def search_params(self, page: int) -> dict:
+        """Params do /v4/search. Sondado em 2026-10-28: `cityIn` NAO filtra mais
+        no servidor (volta o pais inteiro, ~11% de SP, e o cap de paginas
+        truncava SP a ~200 eventos); `city` (string) filtra de verdade (~4k
+        eventos de SP); `q` e busca por texto (ex.: "halloween"). Mantemos
+        `cityIn` por compatibilidade e o filtro client-side continua GARANTIDO."""
+        params = {"city": _CITY, "cityIn": [_CITY], "limit": self._page_size, "page": page}
+        if self._query:
+            params["q"] = self._query
+        return params
 
     def venues(self) -> list[RawVenue]:
         return []  # venues vem EMBUTIDOS nos eventos
@@ -103,8 +116,7 @@ class SymplaSource:
         for page in range(1, self._max_pages + 1):
             resp = httpx.post(
                 self._endpoint,
-                json={"service": "/v4/search",
-                      "params": {"cityIn": [_CITY], "limit": self._page_size, "page": page}},
+                json={"service": "/v4/search", "params": self.search_params(page)},
                 headers={"User-Agent": _USER_AGENT, "Content-Type": "application/json"},
                 timeout=self._timeout,
             )
