@@ -30,6 +30,9 @@ def is_buffet_name(name: str | None) -> bool:
 _PLATFORM_HANDLES = frozenset({
     "sympla", "ifood", "ifoodbrasil", "facebook", "whatsapp", "instagram",
     "youtube", "tiktok", "linktr", "linktree",
+    # caminhos de site que a extracao antiga confundiu com handle (vistos na
+    # fila do ingest_ig em 28/10/2026: @rsrc.php, @blog)
+    "blog", "rsrc.php", "explore", "about", "privacy", "terms",
 })
 
 
