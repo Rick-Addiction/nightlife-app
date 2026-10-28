@@ -52,6 +52,7 @@ STEPS: list[tuple[str, list[str]]] = [
     ("discover_handles", [sys.executable, "-m", "nightlife.discover_handles"]),
     ("ingest_ra", [sys.executable, "-m", "nightlife.ingest_ra"]),
     ("ingest_sympla", [sys.executable, "-m", "nightlife.ingest_sympla"]),
+    ("ingest_shotgun", [sys.executable, "-m", "nightlife.ingest_shotgun"]),
     ("geocode_venues", [sys.executable, "-m", "nightlife.geocode_venues"]),
     ("ingest_flyers", [sys.executable, "-m", "nightlife.ingest_flyers"]),
 ]

@@ -100,3 +100,12 @@ def test_ingest_ig_saiu_do_daily_diario():
     assert "ingest_ig" not in nomes
     assert "ingest_flyers" in nomes          # extracao do inbox continua diaria
     assert "discover_handles" in nomes
+
+
+def test_steps_inclui_shotgun():
+    # fonte #4 (Shotgun) entra no daily depois da Sympla e antes do geocoding,
+    # pra os venues novos dela serem geocodificados na mesma rodada
+    from nightlife.daily import STEPS
+    nomes = [nome for nome, argv in STEPS]
+    assert "ingest_shotgun" in nomes
+    assert nomes.index("ingest_sympla") < nomes.index("ingest_shotgun") < nomes.index("geocode_venues")
