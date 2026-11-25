@@ -1,0 +1,294 @@
+<title>RADAR★SP Sábado 31/10</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: uma coluna, lista cronologica em "linha de horario" (hora grande a esquerda,
+   conteudo a direita), filtros como chips fixos no topo. Identidade RADAR★SP
+   ("Rave Brutalista" do frontend do projeto): preto, branco, rosa e verde acido,
+   bordas duras, sem raio. Look unico (escuro) por decisao — tokens do web/src/theme.css. */
+:root {
+  --black: #000; --panel: #111; --panel-2: #181818; --line: #333; --line-2: #262626;
+  --text: #fff; --muted: #9a9a9a; --dim: #555;
+  --pink: #ff2e88; --green: #00ff85; --amber: #ffb020; --red: #ff4d4d;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--black); color: var(--text); font: 15px/1.45 var(--font);
+  padding-block: 0 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--black); }
+a { color: inherit; }
+.wrap { max-width: 980px; margin: 0 auto; }
+header { padding: 28px 0 18px; border-bottom: 3px solid var(--text); }
+.eyebrow { font: 700 12px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--green); }
+h1 { margin: 10px 0 6px; font-size: clamp(30px, 7vw, 56px); line-height: .95; letter-spacing: -.02em; text-wrap: balance; text-transform: uppercase; }
+h1 .star { color: var(--pink); }
+.sub { color: var(--muted); max-width: 62ch; margin: 8px 0 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 0; margin-top: 18px; border: 2px solid var(--text); }
+.stat { flex: 1 1 150px; min-width: 0; padding: 10px 12px; border-right: 2px solid var(--text); }
+.stat:last-child { border-right: 0; }
+.stat b { display: block; font: 700 26px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.stat span { font: 700 11px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.filters { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--black); padding: 12px 0; border-bottom: 1px solid var(--line); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row + .row { margin-top: 8px; }
+.lbl { font: 700 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 700 12px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 8px 10px; border: 2px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+.chip:hover { border-color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--text); color: var(--black); border-color: var(--text); }
+.chip.hw[aria-pressed="true"] { background: var(--pink); border-color: var(--pink); color: var(--black); }
+.chip:focus-visible, .btn:focus-visible, input:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+input[type=search] { font: 14px var(--font); padding: 8px 10px; border: 2px solid var(--line); background: var(--panel); color: var(--text); min-width: 0; flex: 1 1 180px; }
+.count { font: 700 12px/1 var(--mono); color: var(--green); letter-spacing: .08em; margin-left: auto; }
+.period { margin-top: 26px; }
+.period h2 { display: flex; align-items: baseline; gap: 12px; margin: 0 0 8px; font: 700 13px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--pink); }
+.period h2 small { color: var(--dim); letter-spacing: .08em; }
+.ev { display: grid; grid-template-columns: 76px 1fr; gap: 0 14px; padding: 14px 0; border-top: 1px solid var(--line-2); }
+.ev:first-of-type { border-top: 2px solid var(--line); }
+.time { font: 700 22px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--text); padding-top: 2px; }
+.time small { display: block; font-size: 11px; color: var(--dim); margin-top: 4px; letter-spacing: .08em; }
+.main { min-width: 0; }
+.name { font-weight: 700; font-size: 17px; line-height: 1.25; margin: 0; text-wrap: balance; }
+.name a { text-decoration: none; }
+.name a:hover { text-decoration: underline; text-decoration-color: var(--pink); }
+.where { color: var(--muted); margin: 3px 0 0; }
+.where b { color: var(--text); font-weight: 600; }
+.where .nb { color: var(--green); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.tag { font: 700 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 5px 7px; border: 1px solid var(--line); color: var(--muted); }
+.tag.fam { border-color: var(--dim); color: var(--text); }
+.tag.price { border-color: var(--green); color: var(--green); }
+.tag.sold { border-color: var(--red); color: var(--red); }
+.tag.wait { border-color: var(--amber); color: var(--amber); }
+.tag.hw { border-color: var(--pink); color: var(--pink); }
+.tag.src { color: var(--dim); }
+.links { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 8px; font: 700 12px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.links a { color: var(--text); text-decoration: none; border-bottom: 2px solid var(--pink); padding-bottom: 2px; }
+.links a.quiet { border-color: var(--line); color: var(--muted); }
+.links a:hover { color: var(--pink); }
+.empty { padding: 32px 0; color: var(--muted); border-top: 2px solid var(--line); }
+.web { margin-top: 40px; border-top: 3px solid var(--text); padding-top: 14px; }
+.web h2, .how h2 { margin: 0 0 4px; font: 700 13px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--green); }
+.web p.lead, .how p { color: var(--muted); max-width: 70ch; margin: 6px 0 12px; }
+.webgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.card { border: 2px solid var(--line); background: var(--panel); padding: 12px; min-width: 0; }
+.card .t { font: 700 20px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.card .n { font-weight: 700; margin: 6px 0 2px; }
+.card .w { color: var(--muted); font-size: 14px; }
+.card .note { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.how { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px; font-size: 14px; }
+.how ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+.how li { margin: 3px 0; }
+.how code { font-family: var(--mono); color: var(--text); }
+footer { margin-top: 28px; color: var(--dim); font: 12px/1.5 var(--mono); }
+@media (max-width: 560px) {
+  .ev { grid-template-columns: 1fr; gap: 4px; }
+  .time { font-size: 18px; display: flex; gap: 10px; align-items: baseline; }
+  .time small { margin: 0; }
+  .stat { flex-basis: 45%; border-right: 0; border-bottom: 2px solid var(--text); }
+  .stat:nth-child(odd) { border-right: 2px solid var(--text); }
+  .stat:nth-last-child(-n+2) { border-bottom: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .chip, .tag, .links a { transition: background-color .12s, border-color .12s, color .12s; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">RADAR<span class="star">★</span>SP · Halloween · noite de sábado</div>
+    <h1>Sábado <span class="star">31/10</span><br>em São Paulo</h1>
+    <p class="sub" id="sub"></p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <nav class="filters" aria-label="Filtros">
+    <div class="row">
+      <span class="lbl">Quando</span>
+      <button class="chip" data-f="period" data-v="tarde" aria-pressed="false" type="button">Tarde</button>
+      <button class="chip" data-f="period" data-v="noite" aria-pressed="false" type="button">Noite</button>
+      <button class="chip" data-f="period" data-v="madrugada" aria-pressed="false" type="button">Madrugada</button>
+      <button class="chip hw" data-f="hw" data-v="1" aria-pressed="false" type="button">🎃 Só Halloween</button>
+      <button class="chip" data-f="venue" data-v="1" aria-pressed="false" type="button">Só com local</button>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="row">
+      <span class="lbl">Som</span>
+      <span id="fams"></span>
+      <input type="search" id="q" placeholder="buscar nome, casa, bairro…" aria-label="Buscar">
+    </div>
+  </nav>
+
+  <main id="list"></main>
+
+  <section class="web">
+    <h2>Achados na web, fora do banco</h2>
+    <p class="lead">Eventos de 31/10 que apareceram em busca na web (Ticketmaster, Ticket360, guias) e ainda não têm fonte no RADAR. Conferir no link antes de ir.</p>
+    <div class="webgrid" id="web"></div>
+  </section>
+
+  <section class="how">
+    <h2>Como esta lista foi montada</h2>
+    <p id="how"></p>
+    <ul id="caveats"></ul>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/{"stats":{},"events":[]};
+
+// Achados via busca na web em 28/10 (fora do banco): nome, local, hora, fonte.
+const WEB = [
+  {t:"20:00", n:"Halloween da Alpha (Alpha FM)", v:"Audio", w:"Barra Funda · Av. Francisco Matarazzo, 694",
+   note:"Flashback 70/80/90/2000 com DJs Vadão, Michel Noya e Alex Joker. Concurso de fantasia. 18+.",
+   url:"https://www.ticket360.com.br/evento/34195/ingressos-para-halloween-da-alpha", src:"Ticket360"},
+  {t:"19:00", n:"Halloween 2026 · Soho House", v:"Soho House São Paulo", w:"Bela Vista · R. São Carlos do Pinhal, 764",
+   note:"Rock 'n' roll com glamour gótico, dress code preto e vermelho, DJs. 18+.",
+   url:"https://www.ticketmaster.com.br/event/halloween-2026-soho-house", src:"Ticketmaster"},
+  {t:"21:00", n:"Lendas Urbanas · Halloween no Sampa Sky", v:"Sampa Sky", w:"Centro Histórico",
+   note:"DJs, maquiagem, drinks temáticos e concurso de fantasias, até 2h. Cerca de R$ 100.",
+   url:"https://www.ticketmaster.com.br/event/halloween-sampa-sky", src:"Ticketmaster"},
+  {t:"—", n:"Halloween do Cola em Sampa", v:"Largo da Batata", w:"Pinheiros · 31/10 a 02/11",
+   note:"Rua: música ao vivo, feira, comida e concurso de fantasia. Horário no guia.",
+   url:"https://vivaacidadenews.com.br/dicas/onde-festejar-halloween-sp-bares-festas-passeios/", src:"Viva a Cidade"},
+  {t:"20:00", n:"Festa de Halloween · Shopping Metrô Itaquera", v:"Shopping Metrô Itaquera", w:"Itaquera · até 4h",
+   note:"Festa só para maiores. Confirmar faixa etária e ingresso no guia.",
+   url:"https://programaparadois.com.br/eventos-sao-paulo-outubro-2026/", src:"Programa pra Dois"},
+];
+
+const FAMS = [
+  ["eletronica", "Eletrônica", /techno|house|acid|minimal|trance|break|electro|dance|disco|drum|bass|garage|rave|experimental|synth|club/i],
+  ["urbano", "Funk · Rap · Dancehall", /funk|hip ?hop|rap|grime|trap|reggaeton|dancehall|reggae|afro|r&b|charme|baile/i],
+  ["pop", "Pop · Festa", /pop|festa|open bar|anos 2000|2000|latin|latina|kpop|k-pop|divas|hits/i],
+  ["rock", "Rock · Alternativo", /rock|indie|metal|punk|alternativ|dark ?wave|gotic|gótic|emo|goth|post/i],
+  ["brasil", "Samba · MPB · Raízes", /samba|pagode|mpb|forr|sertanej|roda|choro|bossa|brasil/i],
+  ["show", "Show", /^show$/i],
+];
+const HW = /hallow|ween|bruxa|g[oó]tic|vampir|terror|p[aâ]nico|sangrent|freak|zumbi|caveira|mausol|dia das bruxas|stephen king|backrooms|sadboys/i;
+
+function famOf(e){
+  const hay = [e.genre||"", ...(e.tags||[])].join(" ");
+  for (const [k,,re] of FAMS) if (re.test(hay)) return k;
+  // fallback pelo nome quando nao ha genero
+  const n = e.name;
+  for (const [k,,re] of FAMS) if (k!=="show" && re.test(n)) return k;
+  return "outros";
+}
+const FAM_LABEL = Object.fromEntries(FAMS.map(([k,l])=>[k,l])); FAM_LABEL.outros = "Outros";
+const PERIOD_LABEL = {tarde:"Tarde · até 19h", noite:"Noite · 19h–23h", madrugada:"Madrugada · 23h em diante"};
+
+const events = DATA.events.map(e => ({...e, fam: famOf(e), hw: HW.test(e.name)}));
+const state = {period:new Set(), fam:new Set(), hw:false, venue:false, q:""};
+try { const s = JSON.parse(localStorage.getItem("radar-sat-filters")||"null"); if (s) { state.hw=!!s.hw; state.venue=!!s.venue; } } catch(e) {}
+
+function esc(s){ return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+function filtered(){
+  const q = state.q.trim().toLowerCase();
+  return events.filter(e =>
+    (!state.period.size || state.period.has(e.period)) &&
+    (!state.fam.size || state.fam.has(e.fam)) &&
+    (!state.hw || e.hw) &&
+    (!state.venue || e.venue) &&
+    (!q || [e.name, e.venue, e.neighborhood, e.address, e.genre, ...(e.tags||[])].join(" ").toLowerCase().includes(q))
+  );
+}
+
+function render(){
+  const list = document.getElementById("list");
+  const rows = filtered();
+  document.getElementById("count").textContent = rows.length + (rows.length===1?" festa":" festas");
+  if (!rows.length) { list.innerHTML = '<p class="empty">Nenhuma festa com esses filtros. Tire um filtro ou limpe a busca.</p>'; return; }
+  const by = {tarde:[], noite:[], madrugada:[]};
+  rows.forEach(e => (by[e.period]||by.noite).push(e));
+  list.innerHTML = Object.entries(by).filter(([,v])=>v.length).map(([p, evs]) => `
+    <section class="period">
+      <h2>${esc(PERIOD_LABEL[p])} <small>${evs.length}</small></h2>
+      ${evs.map(card).join("")}
+    </section>`).join("");
+}
+
+function card(e){
+  const where = e.venue
+    ? `<b>${esc(e.venue)}</b>${e.neighborhood?` <span class="nb">· ${esc(e.neighborhood)}</span>`:""}${e.address?` <span>· ${esc(e.address)}</span>`:""}`
+    : `<span>local não divulgado${e.neighborhood?` <span class="nb">· ${esc(e.neighborhood)}</span>`:""}</span>`;
+  const tags = [];
+  tags.push(`<span class="tag fam">${esc(FAM_LABEL[e.fam])}</span>`);
+  if (e.genre && e.fam!=="show") tags.push(`<span class="tag">${esc(e.genre)}</span>`);
+  (e.tags||[]).filter(t => t && t.toLowerCase() !== (e.genre||"").toLowerCase()).slice(0,2).forEach(t => tags.push(`<span class="tag">${esc(t)}</span>`));
+  if (e.status === "Esgotado") tags.push(`<span class="tag sold">Esgotado</span>`);
+  else if (e.status) tags.push(`<span class="tag wait">${esc(e.status)}</span>`);
+  else if (e.price) tags.push(`<span class="tag price">${esc(e.price)}</span>`);
+  if (e.hw) tags.push(`<span class="tag hw">🎃 Halloween</span>`);
+  (e.sources||[]).forEach(s => tags.push(`<span class="tag src">${esc(s)}</span>`));
+  const links = [];
+  Object.entries(e.links||{}).forEach(([src,u]) => links.push(`<a href="${esc(u)}" target="_blank" rel="noopener">Ingressos · ${esc(src)}</a>`));
+  if (e.maps) links.push(`<a class="quiet" href="${esc(e.maps)}" target="_blank" rel="noopener">Mapa</a>`);
+  if (e.instagram) links.push(`<a class="quiet" href="https://www.instagram.com/${esc(e.instagram)}/" target="_blank" rel="noopener">@${esc(e.instagram)}</a>`);
+  const day = e.day && e.day !== "31/10" ? `<small>${esc(e.day)}</small>` : `<small>sáb</small>`;
+  return `<article class="ev">
+    <div class="time">${esc(e.time)}${day}</div>
+    <div class="main">
+      <h3 class="name">${e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a>`:esc(e.name)}</h3>
+      <p class="where">${where}</p>
+      <div class="tags">${tags.join("")}</div>
+      <div class="links">${links.join("")}</div>
+    </div>
+  </article>`;
+}
+
+function renderStats(){
+  const s = DATA.stats || {};
+  const src = s.by_source || {};
+  const tiles = [
+    [events.length, "festas"],
+    [events.filter(e=>e.hw).length, "de Halloween"],
+    [s.with_venue ?? events.filter(e=>e.venue).length, "com local"],
+    [Object.keys(src).length, "fontes"],
+  ];
+  document.getElementById("stats").innerHTML = tiles.map(([v,l])=>`<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
+  document.getElementById("sub").textContent =
+    `Tudo que o RADAR tem no banco para a noite de sábado, 31 de outubro de 2026: ${events.length} festas, ` +
+    `de ${Object.entries(src).map(([k,v])=>`${k} (${v})`).join(", ")}. Horário local de São Paulo; eventos de 00h em diante são a madrugada de sábado para domingo.`;
+  document.getElementById("fams").innerHTML = [...FAMS.map(([k,l])=>[k,l]), ["outros","Outros"]]
+    .filter(([k]) => events.some(e=>e.fam===k))
+    .map(([k,l]) => `<button class="chip" data-f="fam" data-v="${k}" aria-pressed="false" type="button">${esc(l)} <span style="color:var(--muted)">${events.filter(e=>e.fam===k).length}</span></button>`).join(" ");
+  document.getElementById("web").innerHTML = WEB.map(w => `<div class="card">
+    <div class="t">${esc(w.t)}</div>
+    <div class="n"><a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.n)}</a></div>
+    <div class="w"><b>${esc(w.v)}</b> · ${esc(w.w)}</div>
+    <div class="note">${esc(w.note)}</div>
+    <div class="links" style="margin-top:8px"><a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.src)}</a></div>
+  </div>`).join("");
+  document.getElementById("how").textContent =
+    `Banco do nightlife-app recuperado e reingerido em 28/10: Resident Advisor (API GraphQL, área São Paulo), Sympla (API de busca, com o filtro de cidade corrigido no servidor: varredura completa de SP mais passadas por "halloween", "dia das bruxas" e "balada"), Shotgun (fonte nova: listagem cronológica de SP, ${src["Shotgun"]||0} festas de sábado), agendas dos sites próprios dos venues e descoberta de handles de Instagram. Linhas iguais vindas de fontes diferentes foram unidas por nome e horário.`;
+  const cav = [
+    `Instagram: a sessão da conta de varredura parece expirada (0 posts em 12 perfis e 0 resultados de busca). Nenhum flyer novo entrou; refazer o login para voltar a ter as festas que só são anunciadas no IG.`,
+    `${events.filter(e=>!e.venue).length} festas sem local divulgado (o Shotgun mostra só o bairro até perto do evento): abra o link de ingressos para o endereço.`,
+    `Confiança: eventos de ticketing têm fonte única; preço e esgotado/lista de espera vêm do Shotgun no momento da varredura.`,
+    `Fora da lista por não ser balada: ${(s.dropped||[]).length} registro(s) de outro gênero, esporte/infantil, de manhã ou fora da região metropolitana.`,
+    `O crawl das agendas nos sites próprios dos venues foi interrompido no meio (máquina sem memória); só 2 eventos vieram dessa fonte.`,
+  ];
+  document.getElementById("caveats").innerHTML = cav.map(c=>`<li>${esc(c)}</li>`).join("");
+  document.getElementById("foot").textContent = `Gerado em ${s.generated_at || ""} · ${s.rows_db || events.length} linhas no banco → ${events.length} festas após união de duplicatas · RADAR★SP`;
+}
+
+document.addEventListener("click", ev => {
+  const b = ev.target.closest(".chip"); if (!b) return;
+  const f = b.dataset.f, v = b.dataset.v;
+  if (f === "period" || f === "fam") { state[f].has(v) ? state[f].delete(v) : state[f].add(v); b.setAttribute("aria-pressed", state[f].has(v)); }
+  else { state[f] = !state[f]; b.setAttribute("aria-pressed", state[f]); try { localStorage.setItem("radar-sat-filters", JSON.stringify({hw:state.hw, venue:state.venue})); } catch(e) {} }
+  render();
+});
+document.getElementById("q").addEventListener("input", ev => { state.q = ev.target.value; render(); });
+document.querySelectorAll('.chip[data-f="hw"],.chip[data-f="venue"]').forEach(b => b.setAttribute("aria-pressed", !!state[b.dataset.f]));
+
+renderStats();
+render();
+</script>

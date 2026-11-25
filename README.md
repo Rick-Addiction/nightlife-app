@@ -72,7 +72,7 @@ A fonte mock (`ingestion/mock_source.py` + `fixtures/`) é o exemplo de referên
 
 O RADAR★SP reúne locais e festas na interface Festas, Mapa e Locais. O catálogo cruza OpenStreetMap, Google Places, Resident Advisor, Sympla, Shotgun, agendas de casas e posts de Instagram. Na Baixa Augusta, a varredura por área ajudou a encontrar casas ausentes e a corrigir duplicatas.
 
-Em 28 de outubro de 2026, a edição de Halloween reuniu **162 festas para 31 de outubro**, das quais 91 tinham tema de Halloween e 147 tinham local divulgado. [Agenda publicada](https://claude.ai/artifact/SqGwMGM13hraAuMkqbEdjV)
+Em 28 de outubro de 2026, a edição de Halloween reuniu **162 festas para 31 de outubro**, das quais 91 tinham tema de Halloween e 147 tinham local divulgado. [Página, dados e gerador da edição](docs/edicoes/halloween-2026/) · [Agenda publicada em outubro](https://claude.ai/artifact/SqGwMGM13hraAuMkqbEdjV)
 
 - [Especificações do produto](docs/superpowers/specs/) e [planos de implementação](docs/superpowers/plans/)
 - [Primeiras explorações de interface](docs/design/interface-inicial/) e [pranchas do RADAR★SP](docs/design/radar-sp/)
