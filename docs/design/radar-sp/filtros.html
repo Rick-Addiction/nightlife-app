@@ -1,0 +1,181 @@
+<h2>Sistema de filtros — rico de verdade</h2>
+<p class="subtitle">Dimensões que os dados já suportam: <b>QUANDO</b> (hoje/amanhã/fds/data) · <b>ONDE</b> (bairros + perto de mim) · <b>SOM</b> (gêneros reais do banco) · <b>EXTRAS</b> (ticket, flyer, confiança, IG ativo). Dois estilos de interação — escolhe o que te agrada.</p>
+
+<style>
+  .phone { width: 240px; height: 455px; border-radius: 24px; overflow: hidden; margin: 0 auto;
+           border: 3px solid #333; position: relative; font-family: system-ui, sans-serif; background:#000; color:#fff; }
+  .phone * { box-sizing: border-box; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: 18px; }
+  .chip { font-size:8px; font-weight:800; padding:3px 8px; border:1px solid #333; background:#111; color:#fff; }
+  .chip.on { background:#ff2e88; color:#000; border-color:#ff2e88; font-weight:900; }
+  .chip.grn { color:#00ff85; border-color:#00ff85; }
+  .sect { font-size:9px; font-weight:900; color:#ff2e88; letter-spacing:1.5px; margin:10px 0 5px; }
+</style>
+
+<div class="options grid3" style="display:grid;">
+
+  <!-- A: SHEET COMPLETO -->
+  <div class="option" data-choice="sheet" onclick="toggleSelect(this)" style="display:block;">
+    <div style="display:flex; gap:10px; justify-content:center; padding:10px; background:#0a0a0a;">
+      <div class="phone" style="width:118px; height:224px; border-radius:14px;">
+        <div style="padding:6px 6px 3px; font-size:9px; font-weight:900; text-transform:uppercase;">Esta <span style="color:#ff2e88;">Noite</span></div>
+        <div style="display:flex; gap:2px; padding:3px 5px; flex-wrap:wrap;">
+          <span class="chip on" style="font-size:6px; padding:2px 5px;">HOJE ▾</span>
+          <span class="chip" style="font-size:6px; padding:2px 5px;">ONDE ▾</span>
+          <span class="chip" style="font-size:6px; padding:2px 5px;">SOM ▾</span>
+          <span class="chip grn" style="font-size:6px; padding:2px 5px;">≡ 3</span>
+        </div>
+        <div style="margin:3px 5px; border:1px solid #fff; height:52px;"></div>
+        <div style="margin:0 5px; border:1px solid #333; height:34px;"></div>
+        <div style="position:absolute; bottom:0; width:100%; font-size:5px; text-align:center; display:flex;">
+          <span style="flex:1; background:#111; padding:5px 0;">MAPA</span><span style="flex:1; background:#ff2e88; color:#000; padding:5px 0; font-weight:900;">FESTAS</span><span style="flex:1; background:#111; padding:5px 0;">LOCAIS</span>
+        </div>
+      </div>
+      <div class="phone" style="width:240px; height:455px;">
+        <div style="position:absolute; inset:0; background:#0a0a0acc;"></div>
+        <div style="position:absolute; bottom:0; left:0; right:0; top:36px; background:#000; border-top:3px solid #ff2e88; padding:10px 12px; overflow:hidden;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:15px; font-weight:900; text-transform:uppercase;">Filtros</span>
+            <span style="font-size:9px; color:#666; font-weight:800;">LIMPAR ✕</span>
+          </div>
+          <div class="sect">⏱ QUANDO</div>
+          <div style="display:flex; gap:3px;">
+            <span class="chip on" style="flex:1; text-align:center; padding:7px 0;">HOJE</span>
+            <span class="chip" style="flex:1; text-align:center; padding:7px 0;">AMANHÃ</span>
+            <span class="chip" style="flex:1; text-align:center; padding:7px 0;">FDS</span>
+            <span class="chip" style="flex:1; text-align:center; padding:7px 0;">📅 DATA</span>
+          </div>
+          <div class="sect">📍 ONDE</div>
+          <div style="display:flex; gap:3px; flex-wrap:wrap;">
+            <span class="chip grn">⌖ PERTO DE MIM</span>
+            <span class="chip on">AUGUSTA</span>
+            <span class="chip">VILA MADALENA</span>
+            <span class="chip">BARRA FUNDA</span>
+            <span class="chip">PINHEIROS</span>
+            <span class="chip">CENTRO</span>
+            <span class="chip">+ BAIRROS</span>
+          </div>
+          <div class="sect">🔊 SOM</div>
+          <div style="display:flex; gap:3px; flex-wrap:wrap;">
+            <span class="chip on">TECHNO</span>
+            <span class="chip">HOUSE</span>
+            <span class="chip">FUNK</span>
+            <span class="chip">SHOW</span>
+            <span class="chip">FESTA</span>
+          </div>
+          <div class="sect">⚡ EXTRAS</div>
+          <div style="display:flex; gap:3px; flex-wrap:wrap;">
+            <span class="chip grn">COM TICKET</span>
+            <span class="chip">COM FLYER</span>
+            <span class="chip">IG ATIVO</span>
+          </div>
+          <div style="margin-top:8px; font-size:8px; color:#888; font-weight:800;">CONFIANÇA MÍN: 50
+            <div style="height:6px; background:#111; border:1px solid #333; margin-top:3px; position:relative;">
+              <div style="width:50%; height:100%; background:#00ff85;"></div>
+              <div style="position:absolute; left:calc(50% - 4px); top:-4px; width:12px; height:12px; background:#fff; border:2px solid #000;"></div>
+            </div>
+          </div>
+          <div style="position:absolute; bottom:10px; left:12px; right:12px; background:#ff2e88; color:#000; font-weight:900; font-size:12px; text-align:center; padding:11px 0;">VER 12 FESTAS →</div>
+        </div>
+      </div>
+    </div>
+    <div class="content" style="padding:12px 16px;">
+      <h3>A — Sheet de filtros (tela quase cheia)</h3>
+      <p>Barra compacta com categorias (QUANDO ▾ / ONDE ▾ / SOM ▾ / ≡ contador). Tocar em qualquer uma abre O sheet: todas as seções juntas, chips grandes de dedo, "perto de mim" via GPS, slider de confiança, botão-resultado vivo ("VER 12 FESTAS →" atualiza conforme você marca). Um lugar só pra tudo — mesmo sheet serve FESTAS e MAPA.</p>
+    </div>
+  </div>
+
+  <!-- B: EXPANSAO INLINE -->
+  <div class="option" data-choice="inline" onclick="toggleSelect(this)" style="display:block;">
+    <div style="display:flex; justify-content:center; padding:10px; background:#0a0a0a;">
+      <div class="phone">
+        <div style="padding:10px 12px 4px;">
+          <div style="font-size:18px; font-weight:900; letter-spacing:-1px; text-transform:uppercase;">Esta <span style="color:#ff2e88;">Noite</span></div>
+        </div>
+        <div style="display:flex; gap:3px; padding:5px 10px;">
+          <span class="chip on">HOJE ▾</span>
+          <span class="chip" style="border-color:#fff;">ONDE ▴</span>
+          <span class="chip">SOM ▾</span>
+          <span class="chip grn">≡ 3</span>
+        </div>
+        <div style="margin:0 10px; border:2px solid #fff; border-top:3px solid #00ff85; padding:8px; background:#050505;">
+          <div style="font-size:8px; color:#00ff85; font-weight:900; letter-spacing:1px; margin-bottom:5px;">ONDE → ESCOLHE O BAIRRO</div>
+          <div style="display:flex; gap:3px; flex-wrap:wrap;">
+            <span class="chip grn">⌖ PERTO DE MIM</span>
+            <span class="chip on">AUGUSTA</span>
+            <span class="chip">VILA MAD</span>
+            <span class="chip">B. FUNDA</span>
+            <span class="chip">PINHEIROS</span>
+            <span class="chip">CENTRO</span>
+            <span class="chip">MOOCA</span>
+            <span class="chip">+ TODOS</span>
+          </div>
+        </div>
+        <div style="margin:8px 10px 0; border:2px solid #fff; padding:8px; position:relative; opacity:.85;">
+          <div style="font-size:13px; font-weight:900; text-transform:uppercase;">Mamba Negra</div>
+          <div style="font-size:9px; color:#bbb; margin-top:2px;">SÁB 23H → SELVA CLUB · AUGUSTA</div>
+        </div>
+        <div style="margin:6px 10px 0; border:2px solid #333; padding:8px; opacity:.85;">
+          <div style="font-size:13px; font-weight:900; text-transform:uppercase; color:#eee;">Bloco do Fervo</div>
+          <div style="font-size:9px; color:#888; margin-top:2px;">SÁB 22H → CASARÃO AUGUSTA</div>
+        </div>
+        <div style="position:absolute; bottom:0; width:100%; display:flex; font-weight:900; font-size:9px; text-align:center;">
+          <span style="flex:1; background:#111; color:#fff; padding:10px 0; border-top:2px solid #333;">MAPA</span>
+          <span style="flex:1; background:#ff2e88; color:#000; padding:10px 0;">FESTAS</span>
+          <span style="flex:1; background:#111; color:#fff; padding:10px 0; border-top:2px solid #333;">LOCAIS</span>
+        </div>
+      </div>
+    </div>
+    <div class="content" style="padding:12px 16px;">
+      <h3>B — Expansão inline (acordeão)</h3>
+      <p>Tocar numa categoria abre o painel dela ALI, empurrando a lista pra baixo — você nunca perde os resultados de vista (eles filtram ao vivo atrás). Mais leve que o sheet, mas cada categoria é editada separadamente.</p>
+    </div>
+  </div>
+
+  <!-- MAPA: camadas -->
+  <div class="option" data-choice="mapa-ok" onclick="toggleSelect(this)" style="display:block;">
+    <div style="display:flex; justify-content:center; padding:10px; background:#0a0a0a;">
+      <div class="phone">
+        <div style="position:absolute; inset:0; background:repeating-linear-gradient(45deg,#0a0a0a,#0a0a0a 12px,#111 12px,#111 24px);">
+          <div style="position:absolute; top:26%; left:46%; width:13px; height:13px; background:#ff2e88; transform:rotate(45deg);"></div>
+          <div style="position:absolute; top:38%; left:30%; width:13px; height:13px; background:#ff2e88; transform:rotate(45deg);"></div>
+          <div style="position:absolute; top:20%; left:26%; width:5px; height:5px; background:#00ff85;"></div>
+          <div style="position:absolute; top:44%; left:58%; width:5px; height:5px; background:#00ff85;"></div>
+          <div style="position:absolute; top:14%; left:54%; width:5px; height:5px; background:#444;"></div>
+        </div>
+        <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; gap:4px;">
+          <span class="chip on">HOJE ▾</span>
+          <span class="chip">ONDE ▾</span>
+          <span class="chip grn" style="margin-left:auto;">≡ 3</span>
+        </div>
+        <div style="position:absolute; top:44px; right:10px; background:#000; border:2px solid #333; padding:7px 8px;">
+          <div style="font-size:8px; font-weight:900; color:#888; letter-spacing:1px; margin-bottom:4px;">CAMADAS</div>
+          <div style="font-size:9px; font-weight:800; color:#ff2e88;">◆ FESTAS <span style="color:#666;">31</span></div>
+          <div style="font-size:9px; font-weight:800; color:#00ff85; margin-top:3px;">■ LOCAIS ✓ <span style="color:#666;">285</span></div>
+          <div style="font-size:9px; font-weight:800; color:#555; margin-top:3px;">□ SÓ COM FESTA HOJE</div>
+        </div>
+        <div style="position:absolute; bottom:60px; left:10px; background:#000; border:2px solid #ff2e88; padding:6px 8px; display:flex; gap:7px; align-items:center;">
+          <div style="width:34px; height:34px; background:linear-gradient(115deg,#ff2e88,#6d1040);"></div>
+          <div>
+            <div style="font-size:11px; font-weight:900; text-transform:uppercase;">Mamba Negra</div>
+            <div style="font-size:8px; color:#bbb;">SÁB 23H · SELVA · <span style="color:#00ff85;">TICKET→</span></div>
+          </div>
+        </div>
+        <div style="position:absolute; bottom:0; width:100%; display:flex; font-weight:900; font-size:9px; text-align:center;">
+          <span style="flex:1; background:#ff2e88; color:#000; padding:10px 0;">MAPA</span>
+          <span style="flex:1; background:#111; color:#fff; padding:10px 0; border-top:2px solid #333;">FESTAS</span>
+          <span style="flex:1; background:#111; color:#fff; padding:10px 0; border-top:2px solid #333;">LOCAIS</span>
+        </div>
+      </div>
+    </div>
+    <div class="content" style="padding:12px 16px;">
+      <h3>No MAPA: mesmos filtros + controle de CAMADAS</h3>
+      <p>A mesma barra de filtros (estilo A ou B, o que você escolher) + um controle de camadas próprio do mapa: ◆ festas / ■ locais verificados / "só com festa hoje". Tocar num pin abre mini-card com flyer, sem sair do mapa. Clica aqui se esse tratamento do mapa está aprovado.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:16px;">
+  <p class="subtitle"><b>Escolhe A ou B</b> pro estilo de filtro (e clica no card do MAPA se ele está ok). Detalhe honesto: o filtro por bairro/“perto de mim” usa a geo que já temos (bbox por bairro + GPS do navegador) — entra no ciclo. “IG ATIVO” usa o ig_last_post_at do Ciclo B.</p>
+</div>

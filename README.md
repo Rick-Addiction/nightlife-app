@@ -1,4 +1,4 @@
-# Nightlife App
+# NightLife · RADAR★SP
 
 Backend pessoal que descobre, verifica, deduplica e expõe **venues e eventos** de vida noturna de São Paulo (baladas, festas, eventos, festivais) — com evidência, rastreio de fonte e score de confiança. O valor está na camada de dados confiável; a interface (lista + mapa) consome a API.
 
@@ -26,6 +26,7 @@ Requer Python 3.12+ e Docker.
 python -m venv .venv
 .venv/Scripts/python -m pip install -e ".[dev]"   # Windows; Linux/mac: .venv/bin/python
 
+docker volume create nightlife_pgdata               # cria o volume externo no primeiro uso
 docker compose up -d --wait                        # Postgres+PostGIS (porta 5434)
 .venv/Scripts/python -m alembic upgrade head       # cria o schema
 .venv/Scripts/python -m nightlife.seed             # popula com dados mock
@@ -60,8 +61,8 @@ docker compose up -d --wait
 
 ## Como adicionar uma fonte
 
-1. Implemente o protocolo `Source` (`ingestion/base.py`): métodos `venues()` e `event_pages()` devolvendo `RawVenue` / `RawEventPage`.
-2. Mapeie o `source_type` em `ingestion/signals.py` para os sinais de scoring corretos.
+1. Implemente o protocolo `Source` em `ingestion/base.py`. Os métodos `venues()`, `event_pages()` e `events()` fornecem locais, páginas e eventos estruturados, respectivamente.
+2. Confira em `persistence/confidence.py` como o tipo de fonte contribui para a confiança do registro.
 3. Para um novo formato de página, adicione um ramo em `_extract_page` (`ingestion/pipeline.py`) reusando um extractor de `extraction/`.
 4. Rode a fonte via `run_ingestion(session, sua_fonte, reference=...)`.
 
@@ -69,7 +70,12 @@ A fonte mock (`ingestion/mock_source.py` + `fixtures/`) é o exemplo de referên
 
 ## Status
 
-Esqueleto (walking skeleton) completo com dados mock: domínio + persistência + ingestão + API, com testes. Fontes reais (Places/OSM/ticketing/Instagram), extração multimodal de flyers, Telegram e a UI de lista/mapa são os próximos passos.
+O RADAR★SP reúne locais e festas na interface Festas, Mapa e Locais. O catálogo cruza OpenStreetMap, Google Places, Resident Advisor, Sympla, Shotgun, agendas de casas e posts de Instagram. Na Baixa Augusta, a varredura por área ajudou a encontrar casas ausentes e a corrigir duplicatas.
+
+Em 28 de outubro de 2026, a edição de Halloween reuniu **162 festas para 31 de outubro**, das quais 91 tinham tema de Halloween e 147 tinham local divulgado. [Agenda publicada](https://claude.ai/artifact/SqGwMGM13hraAuMkqbEdjV)
+
+- [Especificações do produto](docs/superpowers/specs/) e [planos de implementação](docs/superpowers/plans/)
+- [Primeiras explorações de interface](docs/design/interface-inicial/) e [pranchas do RADAR★SP](docs/design/radar-sp/)
 
 ## UI web (lista + mapa)
 
@@ -114,7 +120,7 @@ com falhas repetidas são auto-pausados.
 
 ## Agendamento diário (Windows)
 
-Roda `discover_handles` → `ingest_ig` → `ingest_flyers` 1x/dia (headless), via Windows Task Scheduler.
+O coletor diário descobre perfis, coleta Resident Advisor, Sympla e Shotgun, geocodifica locais e processa flyers. O monitoramento do feed e a leitura dos sites têm tarefas próprias. [Coletor diário](src/nightlife/daily.py) · [Tarefas do feed e dos sites](scripts/register_feed_tasks.ps1)
 
 ```powershell
 # registra a tarefa (uma vez; sem admin). Horario opcional (default 05:00):

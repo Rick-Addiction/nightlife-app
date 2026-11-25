@@ -1,0 +1,127 @@
+<h2>Como o app se organiza no celular?</h2>
+<p class="subtitle">Mesma estética (Rave Brutalista), três estruturas de navegação diferentes. Pensa: sexta 21h, você abre o app na rua — qual desses te leva mais rápido à resposta "pra onde eu vou"?</p>
+
+<style>
+  .phone { width: 250px; height: 470px; border-radius: 26px; overflow: hidden; margin: 0 auto;
+           border: 3px solid #333; position: relative; font-family: system-ui, sans-serif; background:#000; color:#fff; }
+  .phone * { box-sizing: border-box; }
+  .cards3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+</style>
+
+<div class="cards cards3">
+
+  <!-- A: MAPA-FIRST + BOTTOM SHEET -->
+  <div class="card" data-choice="mapa-bottomsheet" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px; background:#0a0a0a;">
+      <div class="phone">
+        <div style="position:absolute; inset:0; background:repeating-linear-gradient(45deg,#0a0a0a,#0a0a0a 12px,#111 12px,#111 24px);">
+          <div style="position:absolute; top:24%; left:48%; width:14px; height:14px; background:#ff2e88; transform:rotate(45deg);"></div>
+          <div style="position:absolute; top:36%; left:32%; width:14px; height:14px; background:#00ff85; transform:rotate(45deg);"></div>
+          <div style="position:absolute; top:18%; left:28%; width:6px; height:6px; background:#444;"></div>
+          <div style="position:absolute; top:42%; left:60%; width:6px; height:6px; background:#444;"></div>
+          <div style="position:absolute; top:12%; left:58%; width:6px; height:6px; background:#444;"></div>
+        </div>
+        <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; gap:5px;">
+          <span style="font-size:9px; background:#ff2e88; color:#000; font-weight:900; padding:4px 9px;">HOJE</span>
+          <span style="font-size:9px; background:#111; color:#fff; font-weight:800; padding:4px 9px; border:1px solid #333;">FDS</span>
+          <span style="font-size:9px; background:#111; color:#fff; font-weight:800; padding:4px 9px; border:1px solid #333;">TECHNO</span>
+          <span style="font-size:9px; background:#111; color:#00ff85; font-weight:800; padding:4px 9px; border:1px solid #333; margin-left:auto;">LOCAIS✓</span>
+        </div>
+        <div style="position:absolute; bottom:0; left:0; right:0; height:46%; background:#000; border-top:3px solid #ff2e88;">
+          <div style="width:44px; height:4px; background:#444; margin:6px auto;"></div>
+          <div style="padding:0 10px; font-size:10px; color:#888; font-weight:800;">31 FESTAS HOJE ↑ ARRASTA</div>
+          <div style="margin:8px 10px 0; border:2px solid #fff; padding:8px; position:relative;">
+            <div style="position:absolute; top:-2px; right:-2px; background:#00ff85; color:#000; font-size:9px; font-weight:900; padding:1px 7px;">85</div>
+            <div style="font-size:14px; font-weight:900; text-transform:uppercase;">Mamba Negra</div>
+            <div style="font-size:9px; color:#bbb; margin-top:2px;">SÁB 23H → SELVA CLUB</div>
+          </div>
+          <div style="margin:6px 10px 0; border:2px solid #333; padding:8px;">
+            <div style="font-size:14px; font-weight:900; text-transform:uppercase; color:#eee;">Paredão da Haus</div>
+            <div style="font-size:9px; color:#888; margin-top:2px;">SEX 21H → BLITZ HAUS</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Mapa-first + gaveta</h3>
+      <p>O mapa É o app: tela cheia, pins de festa (rosa) e locais (verde/cinza). A lista mora numa gaveta que você arrasta pra cima. Tocar num pin puxa o card. Filtros flutuam em cima. Um contexto só — zero troca de tela.</p>
+    </div>
+  </div>
+
+  <!-- B: ABAS DURAS -->
+  <div class="card" data-choice="abas" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px; background:#0a0a0a;">
+      <div class="phone">
+        <div style="padding:10px 12px; background:#ff2e88; color:#000; font-weight:900; font-size:13px; display:flex; justify-content:space-between;">
+          <span>RADAR★SP</span><span>31 HOJE</span>
+        </div>
+        <div style="display:flex; gap:5px; padding:8px 10px;">
+          <span style="font-size:9px; background:#fff; color:#000; font-weight:900; padding:3px 9px;">HOJE</span>
+          <span style="font-size:9px; background:#111; color:#fff; font-weight:800; padding:3px 9px; border:1px solid #333;">FDS</span>
+          <span style="font-size:9px; background:#111; color:#fff; font-weight:800; padding:3px 9px; border:1px solid #333;">TECHNO</span>
+        </div>
+        <div style="margin:2px 10px 0; border:2px solid #fff; padding:9px; position:relative;">
+          <div style="position:absolute; top:-2px; right:-2px; background:#00ff85; color:#000; font-size:9px; font-weight:900; padding:1px 7px;">85</div>
+          <div style="font-size:15px; font-weight:900; text-transform:uppercase;">Mamba Negra</div>
+          <div style="font-size:9px; color:#bbb; margin-top:2px;">SÁB 23H → SELVA CLUB, AUGUSTA 501</div>
+          <div style="margin-top:5px;"><span style="font-size:8px; background:#ff2e88; color:#000; font-weight:800; padding:2px 7px;">TECHNO</span></div>
+        </div>
+        <div style="margin:7px 10px 0; border:2px solid #333; padding:9px;">
+          <div style="font-size:15px; font-weight:900; text-transform:uppercase; color:#eee;">Paredão da Haus</div>
+          <div style="font-size:9px; color:#888; margin-top:2px;">SEX 21H → BLITZ HAUS</div>
+        </div>
+        <div style="margin:7px 10px 0; border:2px solid #333; padding:9px;">
+          <div style="font-size:15px; font-weight:900; text-transform:uppercase; color:#eee;">Ghost #123</div>
+          <div style="font-size:9px; color:#888; margin-top:2px;">SEX 21H → BAR DO NETÃO</div>
+        </div>
+        <div style="position:absolute; bottom:0; width:100%; display:flex; font-weight:900; font-size:10px; text-align:center;">
+          <span style="flex:1; background:#111; color:#fff; padding:11px 0; border-top:2px solid #333;">MAPA</span>
+          <span style="flex:1; background:#ff2e88; color:#000; padding:11px 0;">FESTAS</span>
+          <span style="flex:1; background:#111; color:#fff; padding:11px 0; border-top:2px solid #333;">LOCAIS</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Três abas duras</h3>
+      <p>MAPA, FESTAS e LOCAIS como telas separadas na barra inferior. Cada uma faz uma coisa só e bem: lista limpa de festas, mapa cheio, diretório de locais. Simples de usar e de construir — mas você troca de tela o tempo todo.</p>
+    </div>
+  </div>
+
+  <!-- C: FEED-FIRST -->
+  <div class="card" data-choice="feed-first" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px; background:#0a0a0a;">
+      <div class="phone">
+        <div style="padding:12px 12px 4px;">
+          <div style="font-size:22px; font-weight:900; letter-spacing:-1px; line-height:.95; text-transform:uppercase;">Esta<br/><span style="color:#ff2e88;">Noite</span></div>
+          <div style="font-size:9px; color:#888; margin-top:4px; font-weight:700;">QUI 09/07 → 31 FESTAS · 285 LOCAIS</div>
+        </div>
+        <div style="margin:8px 10px 0; border:2px solid #fff; padding:0; position:relative;">
+          <div style="height:64px; background:linear-gradient(120deg,#ff2e88 0%, #7a0f44 60%, #000); display:flex; align-items:flex-end; padding:6px 8px;">
+            <span style="font-size:8px; background:#000; color:#00ff85; font-weight:900; padding:2px 6px;">FLYER</span>
+          </div>
+          <div style="padding:8px;">
+            <div style="font-size:15px; font-weight:900; text-transform:uppercase;">Mamba Negra</div>
+            <div style="font-size:9px; color:#bbb; margin-top:2px;">SÁB 23H → SELVA CLUB</div>
+          </div>
+          <div style="position:absolute; top:6px; right:6px; background:#00ff85; color:#000; font-size:9px; font-weight:900; padding:1px 7px;">85</div>
+        </div>
+        <div style="margin:7px 10px 0; border:2px solid #333; padding:8px;">
+          <div style="font-size:14px; font-weight:900; text-transform:uppercase; color:#eee;">Paredão da Haus</div>
+          <div style="font-size:9px; color:#888; margin-top:2px;">SEX 21H → BLITZ HAUS</div>
+        </div>
+        <div style="position:absolute; bottom:14px; right:12px; width:52px; height:52px; background:#ff2e88; border:3px solid #000; box-shadow:0 0 0 2px #ff2e88; display:flex; align-items:center; justify-content:center; font-weight:900; color:#000; font-size:9px; transform:rotate(45deg);">
+          <span style="transform:rotate(-45deg);">MAPA</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Feed "Esta Noite" + mapa como botão</h3>
+      <p>Abre direto na resposta: o feed do dia, manchete grande, flyer em destaque quando houver. O mapa vira um botão-losango flutuante — modo secundário. Máxima velocidade pra "o que tem hoje?", mapa a um toque.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:18px;">
+  <p class="subtitle">Clica no que resolve melhor a sua sexta-feira — e me diz no terminal se algum detalhe de um layout merecia ir pro outro (dá pra misturar: ex. feed do C com a gaveta do A).</p>
+</div>

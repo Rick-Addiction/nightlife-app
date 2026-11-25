@@ -1,0 +1,106 @@
+<h2>Qual é a vibe?</h2>
+<p class="subtitle">Mesmo card de evento em três direções visuais. Clique na que combina com a noite de SP pra você.</p>
+
+<style>
+  .vibe { border-radius:12px; padding:16px; height:250px; display:flex; flex-direction:column; gap:10px; }
+  .vibe .bar { display:flex; gap:6px; align-items:center; }
+  .vibe .logo { font-weight:800; letter-spacing:1px; }
+  .vibe .chip { border-radius:20px; padding:3px 10px; font-size:10px; font-weight:600; }
+  .vibe .ev { border-radius:10px; padding:12px; margin-top:2px; }
+  .vibe .ev .n { font-size:15px; font-weight:700; }
+  .vibe .ev .m { font-size:11px; margin-top:4px; opacity:.85; }
+  .vibe .ev .tags { display:flex; gap:5px; margin-top:8px; }
+  .vibe .ev .tag { font-size:9px; padding:2px 7px; border-radius:5px; }
+  .vibe .conf { margin-left:auto; font-size:10px; font-weight:700; }
+
+  /* A - Neon noturno */
+  .neon { background:radial-gradient(circle at 30% 0%,#1a0a18,#08080c); font-family:system-ui; }
+  .neon .logo { color:#ff2d78; text-shadow:0 0 12px #ff2d78aa; }
+  .neon .chip { background:#ff2d7822; color:#ff7db0; border:1px solid #ff2d7855; }
+  .neon .ev { background:#12101a; border:1px solid #2a1a2e; box-shadow:0 0 20px #ff2d7815; }
+  .neon .ev .n { color:#fff; }
+  .neon .ev .m { color:#c89; }
+  .neon .ev .tag { background:#ff2d7818; color:#ff7db0; }
+  .neon .conf { color:#3ee88a; }
+
+  /* B - Editorial escuro */
+  .edit { background:#141210; font-family:Georgia,serif; }
+  .edit .logo { color:#e8c07a; font-style:italic; }
+  .edit .chip { background:#e8c07a15; color:#d0a860; border:1px solid #e8c07a40; font-family:system-ui; }
+  .edit .ev { background:#1c1916; border:1px solid #2e2820; border-left:3px solid #e8c07a; }
+  .edit .ev .n { color:#f4ede0; }
+  .edit .ev .m { color:#a89880; font-family:system-ui; }
+  .edit .ev .tag { background:#2a2418; color:#c0a870; font-family:system-ui; }
+  .edit .conf { color:#e8c07a; font-family:system-ui; }
+
+  /* C - Cyber duotone */
+  .cyber { background:linear-gradient(160deg,#0a0e1e,#140a1e); font-family:system-ui; }
+  .cyber .logo { color:#22e0e0; text-shadow:0 0 10px #22e0e088; }
+  .cyber .chip { background:#22e0e015; color:#22e0e0; border:1px solid #22e0e044; }
+  .cyber .ev { background:#0e1428; border:1px solid #1e2a44; }
+  .cyber .ev .n { background:linear-gradient(90deg,#22e0e0,#e055c0); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .cyber .ev .m { color:#8ab; }
+  .cyber .ev .tag { background:#e055c018; color:#e07dd0; }
+  .cyber .conf { color:#22e0e0; }
+</style>
+
+<div class="cards" style="grid-template-columns:repeat(3,1fr);">
+  <div class="card" data-choice="neon" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;">
+      <div class="vibe neon">
+        <div class="bar"><span class="logo">RADAR SP</span><span class="chip">esta semana</span></div>
+        <div class="ev">
+          <div style="display:flex;"><span class="n">Mamba Negra</span><span class="conf">92</span></div>
+          <div class="m">SEX 13/06 · 23h · Lab Club</div>
+          <div class="tags"><span class="tag">techno</span><span class="tag">ticket</span></div>
+        </div>
+        <div class="ev">
+          <div style="display:flex;"><span class="n">Gop Tun</span><span class="conf">78</span></div>
+          <div class="m">DOM 15/06 · 16h · Cargo</div>
+          <div class="tags"><span class="tag">house</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>A · Neon noturno</h3><p>Preto profundo, rosa-choque com glow. A cara clássica de balada/rave.</p></div>
+  </div>
+
+  <div class="card" data-choice="edit" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;">
+      <div class="vibe edit">
+        <div class="bar"><span class="logo">RADAR SP</span><span class="chip">esta semana</span></div>
+        <div class="ev">
+          <div style="display:flex;"><span class="n">Mamba Negra</span><span class="conf">92</span></div>
+          <div class="m">SEX 13/06 · 23h · Lab Club</div>
+          <div class="tags"><span class="tag">techno</span><span class="tag">ticket</span></div>
+        </div>
+        <div class="ev">
+          <div style="display:flex;"><span class="n">Gop Tun</span><span class="conf">78</span></div>
+          <div class="m">DOM 15/06 · 16h · Cargo</div>
+          <div class="tags"><span class="tag">house</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>B · Editorial escuro</h3><p>Carvão, dourado quente, título em serifa. Sóbrio e sofisticado (vibe Resident Advisor).</p></div>
+  </div>
+
+  <div class="card" data-choice="cyber" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;">
+      <div class="vibe cyber">
+        <div class="bar"><span class="logo">RADAR SP</span><span class="chip">esta semana</span></div>
+        <div class="ev">
+          <div style="display:flex;"><span class="n">Mamba Negra</span><span class="conf">92</span></div>
+          <div class="m">SEX 13/06 · 23h · Lab Club</div>
+          <div class="tags"><span class="tag">techno</span><span class="tag">ticket</span></div>
+        </div>
+        <div class="ev">
+          <div style="display:flex;"><span class="n">Gop Tun</span><span class="conf">78</span></div>
+          <div class="m">DOM 15/06 · 16h · Cargo</div>
+          <div class="tags"><span class="tag">house</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>C · Cyber duotone</h3><p>Azul-noite com ciano + magenta. Mais lúdico, meio vaporwave.</p></div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">O número verde (92, 78) é o <b>confidence</b> — quão confiável é o dado. Combina com o mapa escuro (CARTO dark) que a gente escolheu.</p>

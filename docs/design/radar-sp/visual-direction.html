@@ -1,0 +1,135 @@
+<h2>Qual direção estética pro RADAR SP?</h2>
+<p class="subtitle">Três caminhos pro mesmo app (mapa + eventos + venues). Cada mock é um celular — o desktop segue a mesma linguagem. Clica no que te dá vontade de abrir numa sexta à noite.</p>
+
+<style>
+  .phone { width: 250px; height: 470px; border-radius: 26px; overflow: hidden; margin: 0 auto;
+           border: 3px solid #333; position: relative; font-family: system-ui, sans-serif; }
+  .phone * { box-sizing: border-box; }
+  .cards3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+</style>
+
+<div class="cards cards3">
+
+  <!-- A: NEON REFINADO -->
+  <div class="card" data-choice="neon-refinado" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px; background:#06080f;">
+      <div class="phone" style="background:linear-gradient(165deg,#0a0e1e,#140a1e); color:#dde;">
+        <div style="padding:10px 12px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:800; letter-spacing:2px; font-size:13px; background:linear-gradient(90deg,#22e0e0,#e055c0); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">RADAR SP</span>
+          <span style="font-size:10px; color:#8ab;">qui 09·07</span>
+        </div>
+        <div style="display:flex; gap:5px; padding:0 10px 8px;">
+          <span style="font-size:9px; padding:3px 8px; border-radius:999px; border:1px solid #22e0e0; color:#22e0e0;">Hoje</span>
+          <span style="font-size:9px; padding:3px 8px; border-radius:999px; border:1px solid #1e2a44; color:#8ab;">Fim de semana</span>
+          <span style="font-size:9px; padding:3px 8px; border-radius:999px; border:1px solid #1e2a44; color:#8ab;">Techno</span>
+        </div>
+        <div style="height:172px; margin:0 10px; border-radius:12px; background:radial-gradient(ellipse at 60% 40%, #101b38, #070b18); position:relative; border:1px solid #1e2a44;">
+          <div style="position:absolute; top:38%; left:52%; width:10px; height:10px; border-radius:50%; background:#22e0e0; box-shadow:0 0 12px #22e0e0;"></div>
+          <div style="position:absolute; top:52%; left:38%; width:10px; height:10px; border-radius:50%; background:#e055c0; box-shadow:0 0 12px #e055c0;"></div>
+          <div style="position:absolute; top:30%; left:30%; width:5px; height:5px; border-radius:50%; background:#5a6b8a;"></div>
+          <div style="position:absolute; top:60%; left:60%; width:5px; height:5px; border-radius:50%; background:#5a6b8a;"></div>
+          <div style="position:absolute; top:22%; left:64%; width:5px; height:5px; border-radius:50%; background:#5a6b8a;"></div>
+          <div style="position:absolute; bottom:8px; left:8px; font-size:8px; color:#567;">285 locais · 31 festas</div>
+        </div>
+        <div style="margin:10px; padding:10px; border-radius:12px; background:rgba(14,20,40,.85); border:1px solid #1e2a44; backdrop-filter:blur(4px);">
+          <div style="display:flex; justify-content:space-between;">
+            <span style="font-size:12px; font-weight:700; background:linear-gradient(90deg,#22e0e0,#e055c0); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">MAMBA NEGRA</span>
+            <span style="font-size:11px; color:#22e0e0; font-weight:700;">85</span>
+          </div>
+          <div style="font-size:10px; color:#8ab; margin-top:3px;">sáb 23h · Selva Club · R. Augusta 501</div>
+          <div style="margin-top:6px;"><span style="font-size:8px; padding:2px 7px; border-radius:5px; background:#e055c018; color:#e07dd0;">Techno</span> <span style="font-size:8px; padding:2px 7px; border-radius:5px; background:#22e0e018; color:#22e0e0;">ticket</span></div>
+        </div>
+        <div style="margin:0 10px; padding:10px; border-radius:12px; background:rgba(14,20,40,.6); border:1px solid #1e2a44;">
+          <div style="display:flex; justify-content:space-between;">
+            <span style="font-size:12px; font-weight:700; color:#dde;">PAREDÃO DA HAUS</span>
+            <span style="font-size:11px; color:#22e0e0; font-weight:700;">65</span>
+          </div>
+          <div style="font-size:10px; color:#8ab; margin-top:3px;">sex 21h · Blitz Haus</div>
+        </div>
+        <div style="position:absolute; bottom:0; width:100%; display:flex; justify-content:space-around; padding:9px 0; background:rgba(10,14,30,.95); border-top:1px solid #1e2a44; font-size:9px; color:#8ab;">
+          <span style="color:#22e0e0;">◉ Mapa</span><span>≡ Festas</span><span>♥ Salvos</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Neon refinado</h3>
+      <p>A identidade atual (ciano/magenta no escuro), mas disciplinada: brilho só onde importa, painéis de vidro, chips de filtro, tipografia consistente. Evolução, não revolução.</p>
+    </div>
+  </div>
+
+  <!-- B: EDITORIAL NOTURNO -->
+  <div class="card" data-choice="editorial-noturno" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px; background:#0c0c0b;">
+      <div class="phone" style="background:#121210; color:#efeae2;">
+        <div style="padding:12px 14px 6px; display:flex; justify-content:space-between; align-items:baseline;">
+          <span style="font-weight:900; font-size:15px; letter-spacing:-.5px; color:#efeae2;">Radar<span style="color:#d8ff3d;">SP</span></span>
+          <span style="font-size:9px; color:#8a8578; text-transform:uppercase; letter-spacing:1px;">Quinta, 9 Jul</span>
+        </div>
+        <div style="padding:2px 14px 10px; font-size:20px; font-weight:800; line-height:1.05; letter-spacing:-.8px;">Esta noite<br/><span style="color:#8a8578; font-size:12px; font-weight:500;">31 festas · 285 locais vivos</span></div>
+        <div style="height:150px; margin:0 12px; border-radius:6px; background:#1b1b18; position:relative; border:1px solid #2a2a25;">
+          <div style="position:absolute; top:40%; left:50%; width:9px; height:9px; border-radius:50%; background:#d8ff3d;"></div>
+          <div style="position:absolute; top:55%; left:36%; width:9px; height:9px; border-radius:50%; background:#d8ff3d;"></div>
+          <div style="position:absolute; top:28%; left:32%; width:4px; height:4px; border-radius:50%; background:#4a4a42;"></div>
+          <div style="position:absolute; top:62%; left:62%; width:4px; height:4px; border-radius:50%; background:#4a4a42;"></div>
+        </div>
+        <div style="margin:12px 12px 0; border-top:1px solid #2a2a25; padding-top:10px;">
+          <div style="font-size:9px; color:#d8ff3d; text-transform:uppercase; letter-spacing:1.5px;">Sáb · 23h · Selva Club</div>
+          <div style="font-size:16px; font-weight:800; letter-spacing:-.4px; margin-top:2px;">Mamba Negra</div>
+          <div style="font-size:10px; color:#8a8578; margin-top:2px;">Techno · R. Augusta, 501 · ingresso à venda</div>
+        </div>
+        <div style="margin:10px 12px 0; border-top:1px solid #2a2a25; padding-top:10px;">
+          <div style="font-size:9px; color:#8a8578; text-transform:uppercase; letter-spacing:1.5px;">Sex · 21h · Blitz Haus</div>
+          <div style="font-size:16px; font-weight:800; letter-spacing:-.4px; margin-top:2px;">Paredão da Haus</div>
+        </div>
+        <div style="position:absolute; bottom:0; width:100%; display:flex; justify-content:space-around; padding:10px 0; background:#121210; border-top:1px solid #2a2a25; font-size:9px; color:#8a8578; text-transform:uppercase; letter-spacing:1px;">
+          <span style="color:#efeae2; border-bottom:2px solid #d8ff3d; padding-bottom:2px;">Hoje</span><span>Mapa</span><span>Locais</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Editorial noturno</h3>
+      <p>Revista de música dark: quase-preto quente, tipografia GRANDE como manchete, um só acento (verde-ácido), listas com respiro editorial. Vibe Resident Advisor/Boiler Room. Sofisticado e legível na rua.</p>
+    </div>
+  </div>
+
+  <!-- C: RAVE BRUTALISTA -->
+  <div class="card" data-choice="rave-brutalista" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px; background:#000;">
+      <div class="phone" style="background:#000; color:#fff;">
+        <div style="padding:10px 12px; background:#ff2e88; color:#000; font-weight:900; font-size:14px; letter-spacing:-.5px; display:flex; justify-content:space-between;">
+          <span>RADAR★SP</span><span>QUI 09/07</span>
+        </div>
+        <div style="height:150px; background:repeating-linear-gradient(45deg,#0a0a0a,#0a0a0a 12px,#111 12px,#111 24px); position:relative; border-bottom:3px solid #ff2e88;">
+          <div style="position:absolute; top:38%; left:50%; width:14px; height:14px; background:#ff2e88; transform:rotate(45deg);"></div>
+          <div style="position:absolute; top:54%; left:34%; width:14px; height:14px; background:#00ff85; transform:rotate(45deg);"></div>
+          <div style="position:absolute; top:26%; left:30%; width:6px; height:6px; background:#444;"></div>
+          <div style="position:absolute; top:60%; left:64%; width:6px; height:6px; background:#444;"></div>
+        </div>
+        <div style="margin:10px; border:2px solid #fff; padding:10px; position:relative;">
+          <div style="position:absolute; top:-2px; right:-2px; background:#00ff85; color:#000; font-size:10px; font-weight:900; padding:2px 8px;">85</div>
+          <div style="font-size:17px; font-weight:900; letter-spacing:-.5px; text-transform:uppercase;">Mamba Negra</div>
+          <div style="font-size:10px; margin-top:3px; color:#bbb;">SÁB 23H → SELVA CLUB, AUGUSTA 501</div>
+          <div style="margin-top:6px;"><span style="font-size:9px; background:#ff2e88; color:#000; font-weight:800; padding:2px 8px;">TECHNO</span> <span style="font-size:9px; background:#fff; color:#000; font-weight:800; padding:2px 8px;">TICKET→</span></div>
+        </div>
+        <div style="margin:0 10px; border:2px solid #333; padding:10px;">
+          <div style="font-size:17px; font-weight:900; text-transform:uppercase; color:#eee;">Paredão da Haus</div>
+          <div style="font-size:10px; margin-top:3px; color:#888;">SEX 21H → BLITZ HAUS</div>
+        </div>
+        <div style="position:absolute; bottom:0; width:100%; display:flex; font-weight:900; font-size:10px; text-align:center;">
+          <span style="flex:1; background:#ff2e88; color:#000; padding:11px 0;">MAPA</span>
+          <span style="flex:1; background:#111; color:#fff; padding:11px 0; border-top:2px solid #333;">FESTAS</span>
+          <span style="flex:1; background:#111; color:#fff; padding:11px 0; border-top:2px solid #333;">LOCAIS</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Rave brutalista</h3>
+      <p>Cultura de flyer: contraste máximo, blocos chapados, tipografia gritada, rosa-choque + verde-neon sobre preto puro. Divertido e com personalidade forte — mas menos "app sério".</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:18px;">
+  <p class="subtitle">Pode clicar em mais de um se estiver em dúvida entre dois — e me diz no terminal o que te atrai/incomoda em cada um (cores? tipografia? energia?).</p>
+</div>

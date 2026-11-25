@@ -1,0 +1,83 @@
+<h2>Como lista e mapa convivem?</h2>
+<p class="subtitle">Três jeitos de organizar a tela principal. Clique no que te agrada.</p>
+
+<style>
+  .wf { background:#0d0d12; border:1px solid #2a2a35; border-radius:10px; overflow:hidden; height:230px; display:flex; flex-direction:column; font-size:11px; }
+  .wf-top { background:#15151d; padding:7px 10px; color:#e0507a; font-weight:700; letter-spacing:.5px; border-bottom:1px solid #2a2a35; display:flex; gap:8px; align-items:center; }
+  .wf-chip { background:#22222e; color:#9aa; border-radius:20px; padding:2px 8px; font-weight:500; font-size:9px; }
+  .wf-body { flex:1; display:flex; min-height:0; }
+  .wf-map { background:linear-gradient(135deg,#1a1a24,#101018); flex:1; position:relative; }
+  .wf-pin { position:absolute; width:9px; height:9px; border-radius:50%; background:#e0507a; box-shadow:0 0 8px #e0507a; }
+  .wf-list { background:#0f0f15; overflow:hidden; }
+  .wf-card { background:#181820; border-radius:6px; margin:6px; padding:6px 8px; }
+  .wf-card .t { color:#dde; font-weight:600; font-size:10px; }
+  .wf-card .s { color:#778; font-size:8px; margin-top:2px; }
+  .wf-tabs { display:flex; background:#15151d; border-bottom:1px solid #2a2a35; }
+  .wf-tab { flex:1; text-align:center; padding:6px; font-size:9px; color:#778; }
+  .wf-tab.on { color:#e0507a; border-bottom:2px solid #e0507a; }
+  .wf-sheet { position:absolute; left:0; right:0; bottom:0; background:#0f0f15; border-top:1px solid #2a2a35; border-radius:12px 12px 0 0; padding:6px; }
+  .wf-grip { width:32px; height:3px; background:#445; border-radius:3px; margin:0 auto 6px; }
+</style>
+
+<div class="cards" style="grid-template-columns:repeat(3,1fr);">
+  <div class="card" data-choice="split" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;">
+      <div class="wf">
+        <div class="wf-top">RADAR SP <span class="wf-chip">esta semana</span><span class="wf-chip">techno</span></div>
+        <div class="wf-body">
+          <div class="wf-list" style="width:44%;">
+            <div class="wf-card"><div class="t">Mamba Negra</div><div class="s">SEX 23h · Lab Club</div></div>
+            <div class="wf-card"><div class="t">Gop Tun</div><div class="s">DOM 16h · Cargo</div></div>
+            <div class="wf-card"><div class="t">Baile da Bapho</div><div class="s">SAB 02h · Station</div></div>
+          </div>
+          <div class="wf-map">
+            <div class="wf-pin" style="top:30%;left:40%;"></div>
+            <div class="wf-pin" style="top:55%;left:60%;"></div>
+            <div class="wf-pin" style="top:70%;left:35%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>A · Split</h3><p>Lista e mapa lado a lado, sempre visíveis. Clicar num card acende o pin.</p></div>
+  </div>
+
+  <div class="card" data-choice="mapfirst" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;">
+      <div class="wf">
+        <div class="wf-top">RADAR SP <span class="wf-chip">esta semana</span></div>
+        <div class="wf-body">
+          <div class="wf-map" style="flex:1;">
+            <div class="wf-pin" style="top:22%;left:30%;"></div>
+            <div class="wf-pin" style="top:38%;left:65%;"></div>
+            <div class="wf-pin" style="top:30%;left:50%;"></div>
+            <div class="wf-sheet">
+              <div class="wf-grip"></div>
+              <div class="wf-card"><div class="t">Mamba Negra</div><div class="s">SEX 23h · Lab Club</div></div>
+              <div class="wf-card"><div class="t">Gop Tun</div><div class="s">DOM 16h · Cargo</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>B · Mapa dominante</h3><p>Mapa ocupa tudo; a lista sobe como uma gaveta (bottom sheet). Bem "app".</p></div>
+  </div>
+
+  <div class="card" data-choice="tabs" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;">
+      <div class="wf">
+        <div class="wf-top">RADAR SP</div>
+        <div class="wf-tabs"><div class="wf-tab on">Lista</div><div class="wf-tab">Mapa</div></div>
+        <div class="wf-body">
+          <div class="wf-list" style="flex:1;">
+            <div class="wf-card"><div class="t">Mamba Negra</div><div class="s">SEX 23h · Lab Club · techno</div></div>
+            <div class="wf-card"><div class="t">Gop Tun</div><div class="s">DOM 16h · Cargo · house</div></div>
+            <div class="wf-card"><div class="t">Baile da Bapho</div><div class="s">SAB 02h · Station · funk</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>C · Abas</h3><p>Alterna entre lista cheia e mapa cheio. Cada visão respira; sem dividir espaço.</p></div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px;">Meu palpite: <b>A (split)</b> pra desktop — você vê a festa e onde ela é ao mesmo tempo. Mas se pensa em usar no celular, <b>B</b> é mais natural.</p>
